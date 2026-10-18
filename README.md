@@ -52,17 +52,7 @@ To uninstall, delete `version.dll`. Optional leftovers: `Valheaven.settings.json
 | `release/forum-credit` | Same code; in-menu credit text is just `Loathecsgo`. |
 | `original-source` | Old 2.1.0 snapshot. Don't base new work here. |
 
-New features go on `release/valheaven-full-credit`. Forum branch gets mirrored when a forum package is cut:
-
-```powershell
-# After full-credit is committed and clean:
-.\Mirror-ForumCredit.ps1
-git commit -m "Forum credit: Loathecsgo only (mirror of release/valheaven-full-credit)."
-git push --force-with-lease origin release/forum-credit
-git checkout release/valheaven-full-credit
-```
-
-Or one shot (still runs as you): `.\Mirror-ForumCredit.ps1 -Commit -Push`
+New features go on `release/valheaven-full-credit`.
 
 ---
 
