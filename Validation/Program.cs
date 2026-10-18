@@ -139,7 +139,7 @@ internal static class Program
         Check(pluginAssembly.GetType("ValheimAdminMenu.HostTools")!=null,"Host authority helper present");
         Check(typeof(ExpansionFeatures).GetMethod("ApplyWeather",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Weather apply API present");
         Check(typeof(ExpansionFeatures).GetMethod("ClearWeather",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Weather clear API present");
-        Check(Plugin.ProductVersion=="3.0.2","Product version is 3.0.2");
+        Check(Plugin.ProductVersion=="3.0.3","Product version is 3.0.3");
         Check(pluginAssembly.GetType("ValheimAdminMenu.FeatureSuite")!=null,"FeatureSuite helper present");
         Check(pluginAssembly.GetType("ValheimAdminMenu.InventoryCapacity")!=null,"InventoryCapacity helper present");
         Check(typeof(SettingsData).GetField("playerInvRows")!=null && typeof(SettingsData).GetField("stackSizeMult")!=null,"Inventory capacity settings persist");

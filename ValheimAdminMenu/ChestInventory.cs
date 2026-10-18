@@ -13,36 +13,141 @@ namespace ValheimAdminMenu
         internal static bool DepositSkipEquipped = true;
         internal static string WithdrawSearch = "";
 
-        internal static List<Container> NearbyAccessible(Player player, float radius)
+        private const float CacheSeconds = 0.4f;
+        private static readonly List<Container> cachedChests = new List<Container>();
+        private static readonly Dictionary<string, int> cachedCounts =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private static float cacheUntil;
+        private static Vector3 cachePos;
+        private static float cacheRadius = -1f;
+        private static long cachePlayerId = -1;
+        private static int cacheFrame = -1;
+
+        internal static void InvalidateCraftCache()
         {
-            var list = new List<Container>();
-            if (!player) return list;
-            long id = player.GetPlayerID();
-            Vector3 pos = player.transform.position;
-            foreach (var container in WorldTools.Loaded<Container>())
-            {
-                if (!container || !WorldTools.Nearby(container, pos, radius)) continue;
-                if (!CanUse(container, id)) continue;
-                list.Add(container);
-            }
-            return list;
+            cacheUntil = 0f;
+            cacheFrame = -1;
+            cachedChests.Clear();
+            cachedCounts.Clear();
         }
 
-        internal static bool CanUse(Container container, long playerId)
+        internal static List<Container> NearbyAccessible(Player player, float radius)
+        {
+            EnsureChestList(player, radius, claimForWrite: false);
+            return new List<Container>(cachedChests);
+        }
+
+        /// <summary>Read-only access: no ClaimOwnership spam. Used for craft UI checks.</summary>
+        private static bool CanRead(Container container, long playerId)
         {
             if (!container) return false;
             if (container.m_checkGuardStone && !PrivateArea.CheckAccess(container.transform.position, 0f, true, false))
                 return false;
             try
             {
-                var allowed = (bool)Reflection.Method(typeof(Container), "CheckAccess", typeof(long)).Invoke(container, new object[] { playerId });
+                var allowed = (bool)Reflection.Method(typeof(Container), "CheckAccess", typeof(long))
+                    .Invoke(container, new object[] { playerId });
                 if (!allowed) return false;
             }
             catch { return false; }
             var view = container.GetComponent<ZNetView>();
+            return view && view.IsValid();
+        }
+
+        /// <summary>Write path (deposit/withdraw/consume): claim so inventory edits stick.</summary>
+        internal static bool CanUse(Container container, long playerId)
+        {
+            if (!CanRead(container, playerId)) return false;
+            var view = container.GetComponent<ZNetView>();
             if (!view || !view.IsValid()) return false;
             if (!view.IsOwner()) view.ClaimOwnership();
             return view.IsOwner();
+        }
+
+        private static void EnsureChestList(Player player, float radius, bool claimForWrite)
+        {
+            if (!player)
+            {
+                InvalidateCraftCache();
+                return;
+            }
+            radius = Mathf.Clamp(radius, 1f, 50f);
+            long id = player.GetPlayerID();
+            Vector3 pos = player.transform.position;
+            // Same-frame reuse is free; short TTL covers craft UI hammering HaveRequirementItems.
+            bool fresh = Time.frameCount == cacheFrame
+                || (Time.unscaledTime < cacheUntil
+                    && cachePlayerId == id
+                    && Mathf.Abs(cacheRadius - radius) < 0.05f
+                    && (pos - cachePos).sqrMagnitude < 2.25f);
+            if (fresh && !claimForWrite)
+                return;
+
+            cachedChests.Clear();
+            cachedCounts.Clear();
+            cacheUntil = Time.unscaledTime + CacheSeconds;
+            cachePos = pos;
+            cacheRadius = radius;
+            cachePlayerId = id;
+            cacheFrame = Time.frameCount;
+
+            float r2 = radius * radius;
+            Container[] all;
+            try { all = WorldTools.Loaded<Container>(); }
+            catch { return; }
+            if (all == null) return;
+
+            for (int i = 0; i < all.Length; i++)
+            {
+                var container = all[i];
+                if (!container) continue;
+                if ((container.transform.position - pos).sqrMagnitude > r2) continue;
+                if (claimForWrite)
+                {
+                    if (!CanUse(container, id)) continue;
+                }
+                else if (!CanRead(container, id)) continue;
+
+                // One optional claim when first building a readable cache (co-op chests).
+                if (!claimForWrite)
+                {
+                    try
+                    {
+                        var view = container.GetComponent<ZNetView>();
+                        if (view && view.IsValid() && !view.IsOwner() && container.GetInventory() == null)
+                            view.ClaimOwnership();
+                    }
+                    catch { }
+                }
+
+                cachedChests.Add(container);
+                Inventory inv = null;
+                try { inv = container.GetInventory(); } catch { }
+                if (inv == null) continue;
+                try
+                {
+                    var items = inv.GetAllItems();
+                    if (items == null) continue;
+                    for (int j = 0; j < items.Count; j++)
+                    {
+                        var item = items[j];
+                        if (item?.m_shared == null || item.m_stack <= 0) continue;
+                        string name = item.m_shared.m_name;
+                        if (string.IsNullOrEmpty(name)) continue;
+                        int have;
+                        cachedCounts.TryGetValue(name, out have);
+                        cachedCounts[name] = have + item.m_stack;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private static void EnsureWriteChests(Player player, float radius)
+        {
+            // Rebuild with claim so edits work; still only once per cache window.
+            cacheUntil = 0f;
+            EnsureChestList(player, radius, claimForWrite: true);
         }
 
         private static void Touch(Container container)
@@ -50,33 +155,45 @@ namespace ValheimAdminMenu
             try
             {
                 var inv = container.GetInventory();
-                if (inv != null) Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool)).Invoke(inv, new object[] { true, false });
+                if (inv != null) Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool))
+                    .Invoke(inv, new object[] { true, false });
             }
             catch { }
         }
 
         internal static int CountNearby(Player player, string sharedName, int quality, float radius)
         {
-            int total = 0;
-            foreach (var container in NearbyAccessible(player, radius))
+            if (string.IsNullOrEmpty(sharedName) || !player) return 0;
+            // quality -1: use aggregated cache (craft checks). Specific quality: scan inventories once.
+            if (quality < 0)
+            {
+                EnsureChestList(player, radius, claimForWrite: false);
+                int total;
+                return cachedCounts.TryGetValue(sharedName, out total) ? total : 0;
+            }
+            int sum = 0;
+            EnsureChestList(player, radius, claimForWrite: false);
+            for (int i = 0; i < cachedChests.Count; i++)
             {
                 try
                 {
-                    var inv = container.GetInventory();
-                    if (inv != null) total += inv.CountItems(sharedName, quality, true);
+                    var inv = cachedChests[i].GetInventory();
+                    if (inv != null) sum += inv.CountItems(sharedName, quality, true);
                 }
                 catch { }
             }
-            return total;
+            return sum;
         }
 
         internal static int RemoveNearby(Player player, string sharedName, int amount, int quality, float radius)
         {
             if (amount <= 0) return 0;
+            EnsureWriteChests(player, radius);
             int left = amount;
-            foreach (var container in NearbyAccessible(player, radius))
+            for (int i = 0; i < cachedChests.Count; i++)
             {
                 if (left <= 0) break;
+                var container = cachedChests[i];
                 try
                 {
                     var inv = container.GetInventory();
@@ -92,6 +209,7 @@ namespace ValheimAdminMenu
                 }
                 catch { }
             }
+            InvalidateCraftCache();
             return amount - left;
         }
 
@@ -100,12 +218,13 @@ namespace ValheimAdminMenu
             var player = app.RequirePlayer();
             app.RequireWorld();
             float radius = Mathf.Clamp(Radius, 1, 50);
-            var chests = NearbyAccessible(player, radius);
-            if (chests.Count == 0)
+            EnsureWriteChests(player, radius);
+            if (cachedChests.Count == 0)
             {
                 app.Report("No accessible nearby chests within " + radius.ToString("0.#") + " m.");
                 return;
             }
+            var chests = new List<Container>(cachedChests);
             var inv = player.GetInventory();
             var items = inv.GetAllItems().ToList();
             int moved = 0, stacks = 0, skipped = 0;
@@ -121,6 +240,7 @@ namespace ValheimAdminMenu
                     stacks++;
                 }
             }
+            InvalidateCraftCache();
             app.Report($"Deposited {moved} items ({stacks} stacks) into {chests.Count} chest(s) within {radius:0.#} m"
                 + (skipped > 0 ? $"; skipped {skipped}." : "."));
         }
@@ -130,8 +250,8 @@ namespace ValheimAdminMenu
             var player = app.RequirePlayer();
             app.RequireWorld();
             float radius = Mathf.Clamp(Radius, 1, 50);
-            var chests = NearbyAccessible(player, radius);
-            if (chests.Count == 0)
+            EnsureWriteChests(player, radius);
+            if (cachedChests.Count == 0)
             {
                 app.Report("No accessible nearby chests within " + radius.ToString("0.#") + " m.");
                 return;
@@ -139,8 +259,9 @@ namespace ValheimAdminMenu
             var dest = player.GetInventory();
             string filter = (WithdrawSearch ?? "").Trim();
             int moved = 0, stacks = 0;
-            foreach (var container in chests)
+            for (int c = 0; c < cachedChests.Count; c++)
             {
+                var container = cachedChests[c];
                 Inventory src;
                 try { src = container.GetInventory(); } catch { continue; }
                 if (src == null) continue;
@@ -156,7 +277,8 @@ namespace ValheimAdminMenu
                 }
                 Touch(container);
             }
-            app.Report($"Withdrew {moved} items ({stacks} stacks) from {chests.Count} chest(s) within {radius:0.#} m"
+            InvalidateCraftCache();
+            app.Report($"Withdrew {moved} items ({stacks} stacks) from {cachedChests.Count} chest(s) within {radius:0.#} m"
                 + (!string.IsNullOrEmpty(filter) ? $" matching \"{Rules.Text(filter)}\"." : "."));
         }
 
@@ -197,6 +319,7 @@ namespace ValheimAdminMenu
         {
             if (!player || recipe?.m_resources == null) return false;
             float radius = CraftRadius();
+            EnsureChestList(player, radius, claimForWrite: false);
             var station = player.GetCurrentCraftingStation();
             foreach (var req in recipe.m_resources)
             {
@@ -204,7 +327,9 @@ namespace ValheimAdminMenu
                 string name = req.m_resItem.m_itemData.m_shared.m_name;
                 int need = req.GetAmount(qualityLevel) * Math.Max(1, amount);
                 if (need <= 0) continue;
-                int have = CountQuality(player.GetInventory(), name) + CountNearby(player, name, -1, radius);
+                int chestHave;
+                cachedCounts.TryGetValue(name, out chestHave);
+                int have = CountQuality(player.GetInventory(), name) + chestHave;
                 if (recipe.m_requireOnlyOneIngredient)
                 {
                     if (have >= need) return true;
@@ -219,11 +344,14 @@ namespace ValheimAdminMenu
         {
             if (!player || piece?.m_resources == null) return false;
             float radius = CraftRadius();
+            EnsureChestList(player, radius, claimForWrite: false);
             foreach (var req in piece.m_resources)
             {
                 if (req?.m_resItem?.m_itemData?.m_shared == null || req.m_amount <= 0) continue;
                 string name = req.m_resItem.m_itemData.m_shared.m_name;
-                int have = player.GetInventory().CountItems(name, -1, true) + CountNearby(player, name, -1, radius);
+                int chestHave;
+                cachedCounts.TryGetValue(name, out chestHave);
+                int have = player.GetInventory().CountItems(name, -1, true) + chestHave;
                 if (have < req.m_amount) return false;
             }
             return true;
@@ -264,7 +392,6 @@ namespace ValheimAdminMenu
         {
             if (inv == null) return 0;
             int best = 0;
-            // Match vanilla HaveRequirementItems: scan qualities, take the highest count.
             for (int q = 1; q < 20; q++)
             {
                 int c = inv.CountItems(name, q, true);
