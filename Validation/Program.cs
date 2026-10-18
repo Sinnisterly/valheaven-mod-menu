@@ -139,7 +139,7 @@ internal static class Program
         Check(pluginAssembly.GetType("ValheimAdminMenu.HostTools")!=null,"Host authority helper present");
         Check(typeof(ExpansionFeatures).GetMethod("ApplyWeather",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Weather apply API present");
         Check(typeof(ExpansionFeatures).GetMethod("ClearWeather",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Weather clear API present");
-        Check(Plugin.ProductVersion=="3.0.0","Product version is 3.0.0");
+        Check(Plugin.ProductVersion=="3.0.2","Product version is 3.0.2");
         Check(pluginAssembly.GetType("ValheimAdminMenu.FeatureSuite")!=null,"FeatureSuite helper present");
         Check(pluginAssembly.GetType("ValheimAdminMenu.InventoryCapacity")!=null,"InventoryCapacity helper present");
         Check(typeof(SettingsData).GetField("playerInvRows")!=null && typeof(SettingsData).GetField("stackSizeMult")!=null,"Inventory capacity settings persist");
@@ -175,7 +175,7 @@ internal static class Program
         Check(typeof(Release250).GetMethod("DrawCopyVolume",BindingFlags.Static|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Copy volume draw API present");
         Check(typeof(Release250).GetField("CornerA",BindingFlags.Static|BindingFlags.NonPublic|BindingFlags.Public)!=null,"Copy CornerA field present");
         Check(typeof(SettingsData).GetField("version")!=null,"Settings version field present");
-        Check(new SettingsData().version==8,"Default settings schema is v8");
+        Check(new SettingsData().version==9,"Default settings schema is v9");
         Check(new SettingsData().language==LocaleCodes.Auto,"Default menu language follows Valheim");
         Check(LocaleCodes.FromValheim("Russian")==LocaleCodes.Russian,"Valheim Russian maps to menu ru");
         Check(LocaleCodes.FromValheim("Portuguese_Brazilian")==LocaleCodes.PortugueseBrazil,"Valheim Brazilian Portuguese maps to pt-BR");

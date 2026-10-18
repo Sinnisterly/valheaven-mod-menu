@@ -29,8 +29,11 @@ namespace ValheimAdminMenu
         {
             if (!Enabled || !player || player != Player.m_localPlayer
                 || (Plugin.Instance != null && Plugin.Instance.Open)
+                || player.IsTeleporting() || player.IsDead()
                 || !player.InPlaceMode()
-                || Hud.IsPieceSelectionVisible())
+                || !Release250.IsBuildHammer(player)
+                || Hud.IsPieceSelectionVisible()
+                || DragBuilding.Active)
             {
                 HideAxes();
                 return;
@@ -38,6 +41,12 @@ namespace ValheimAdminMenu
 
             var ghost = Reflection.Get<GameObject>(player, "m_placementGhost");
             if (!ghost || !ghost.activeInHierarchy)
+            {
+                HideAxes();
+                return;
+            }
+            if (ghost.GetComponent<Plant>() || ghost.GetComponent<TerrainModifier>()
+                || ghost.GetComponentInChildren<TerrainModifier>(true))
             {
                 HideAxes();
                 return;
@@ -59,6 +68,8 @@ namespace ValheimAdminMenu
             PlacementSnap.AlignGhost(ghost);
             ShowAxes(ghost.transform.position, hammerRot);
         }
+
+        internal static void HideAxesPublic() => HideAxes();
 
         internal static void TickPaste()
         {
@@ -208,12 +219,16 @@ namespace ValheimAdminMenu
             {
                 if (!Enabled || __instance != Player.m_localPlayer) return;
                 if (DragBuilding.Active) return;
+                if (!Release250.IsBuildHammer(__instance)) return;
                 var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
                 if (!ghost || !ghost.activeInHierarchy)
                 {
                     HideAxes();
                     return;
                 }
+                if (ghost.GetComponent<Plant>() || ghost.GetComponent<TerrainModifier>()
+                    || ghost.GetComponentInChildren<TerrainModifier>(true))
+                    return;
                 ghost.transform.rotation = hammerRot;
                 PlacementSnap.AlignGhost(ghost);
             }

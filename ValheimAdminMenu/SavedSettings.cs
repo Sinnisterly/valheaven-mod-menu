@@ -7,7 +7,7 @@ namespace ValheimAdminMenu
     [Serializable]
     internal sealed class SettingsData
     {
-        public int version = 8, hotkey = (int)KeyCode.F8, espFont = 11, espMax = 70;
+        public int version = 9, hotkey = (int)KeyCode.F8, espFont = 11, espMax = 70;
         public string language = LocaleCodes.Auto;
         public SpawnPreset[] spawnPresets = new SpawnPreset[0];
         public EspFilter[] espFilters = new EspFilter[0];
@@ -76,7 +76,7 @@ namespace ValheimAdminMenu
         public bool freecamBuild, meleeTargetLock, meleeLockPlayers, flyingMount, mountAnyCreature;
         public bool pasteLevelGround, pasteLevelPerPiece, levelOnPlace;
         public bool autoPastePreview = true, pasteSnapToGround = true, pasteAnchorSnap, applyTerrainProfile;
-        public bool freeBuildRotation, freeBuildRotationLocal, universalSnap = true, dragBuilding = true, placementHud = true;
+        public bool freeBuildRotation, freeBuildRotationLocal, universalSnap = true, dragBuilding, placementHud = true;
         public bool hudRotation = true, hudAxisStep = true, hudPieceCount = true, hudLockState = true, hudGroundSnap = true, hudInTerrain = true, hudPrefabName = true;
         public int rotationSnapDivisions = 45, dragMaxPieces = 500;
         public float pasteFeather = 6f;
@@ -219,6 +219,12 @@ namespace ValheimAdminMenu
                 loaded.playerInvOverrideSet = true;
                 if (loaded.sitMountAnywhere) loaded.mountAnyCreature = true;
                 loaded.version = 8;
+            }
+            if (loaded.version < 9)
+            {
+                // 3.0.0 drag-build default broke normal place; force off once for existing sidecars.
+                loaded.dragBuilding = false;
+                loaded.version = 9;
             }
             loaded.featureBinds = UnpackBinds(loaded);
             loaded.espFilters = UnpackFilters(loaded);

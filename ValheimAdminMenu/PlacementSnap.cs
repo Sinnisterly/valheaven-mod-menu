@@ -20,6 +20,7 @@ namespace ValheimAdminMenu
         {
             if (!ghost || !ghost.activeInHierarchy) return;
             if (DragBuilding.Active) return;
+            if (IsExcludedGhost(ghost)) return;
             var piece = ghost.GetComponent<Piece>();
             if (!piece) return;
 
@@ -63,18 +64,32 @@ namespace ValheimAdminMenu
                 ghost.transform.position += bestDelta;
         }
 
+        private static bool IsExcludedGhost(GameObject ghost)
+        {
+            if (!ghost) return true;
+            if (ghost.GetComponent<Plant>()) return true;
+            if (ghost.GetComponent<TerrainModifier>() || ghost.GetComponentInChildren<TerrainModifier>(true)) return true;
+            string n = ghost.name ?? "";
+            if (n.IndexOf("ValheavenDragGhost", StringComparison.Ordinal) >= 0) return true;
+            if (n.IndexOf("ValheavenPasteGhost_", StringComparison.Ordinal) >= 0) return true;
+            return false;
+        }
+
         private static void CollectNearbyPieces(Vector3 center, float radius)
         {
             nearby.Clear();
             int mask = LayerMask.GetMask("piece", "Default", "static_solid", "Default_small");
-            int n = Physics.OverlapSphereNonAlloc(center, radius, overlap, mask, QueryTriggerInteraction.Collide);
-            for (int i = 0; i < n; i++)
+            int hitCount = Physics.OverlapSphereNonAlloc(center, radius, overlap, mask, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < hitCount; i++)
             {
                 var col = overlap[i];
                 if (!col) continue;
                 var piece = col.GetComponentInParent<Piece>();
                 if (!piece || piece.GetComponent<ItemDrop>() || piece.GetComponent<Character>()) continue;
-                if (piece.gameObject && piece.gameObject.name.IndexOf("ValheavenDragGhost", StringComparison.Ordinal) >= 0) continue;
+                if (piece.GetComponent<Plant>()) continue;
+                string pieceName = piece.gameObject ? piece.gameObject.name : "";
+                if (pieceName.IndexOf("ValheavenDragGhost", StringComparison.Ordinal) >= 0) continue;
+                if (pieceName.IndexOf("ValheavenPasteGhost_", StringComparison.Ordinal) >= 0) continue;
                 if (!nearby.Contains(piece)) nearby.Add(piece);
             }
         }
@@ -87,6 +102,8 @@ namespace ValheimAdminMenu
                 if (!UniversalSnap || __instance != Player.m_localPlayer) return;
                 if (DragBuilding.Active) return;
                 if (FreeBuildRotation.Enabled) return;
+                // Hoe / cultivator must keep vanilla ghost math.
+                if (!Release250.IsBuildHammer(__instance)) return;
                 var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
                 if (ghost && ghost.activeInHierarchy) AlignGhost(ghost);
             }

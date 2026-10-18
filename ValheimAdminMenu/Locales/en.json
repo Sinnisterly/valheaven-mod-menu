@@ -1164,7 +1164,7 @@
   "build.hud_terrain": "HUD: pieces in terrain",
   "build.hud_prefab": "HUD: prefab name",
   "build.drag_enabled": "Drag building",
-  "build.drag_enabled.help": "Hold place on walls, floors, or beams. Starts snapped to the piece under the ghost, then steps along that snap axis. Release to place. RMB cancels.",
+  "build.drag_enabled.help": "Optional. Walls, floors, beams, roofs only. Click places one piece; hold briefly (or drag along the snap axis) to stretch a line. Off by default. RMB cancels a drag.",
   "build.drag_max": "Drag max pieces",
   "build.drag_max.help": "Hard cap for one drag stroke.",
   "build.blueprints.note": "Saved across worlds and characters. Import .vbp, PlanBuild .blueprint, or BetterBuilding .bbp. Export writes .vbp.",

@@ -25,7 +25,8 @@ namespace ValheimAdminMenu
             if (app.Phase != null && (app.Phase.HideHud || app.Phase.PhotoMode)) return;
 
             bool paste = Release250.PastePreviewActive;
-            bool hammer = FreeBuildRotation.Enabled && Player.m_localPlayer && Player.m_localPlayer.InPlaceMode();
+            bool hammer = FreeBuildRotation.Enabled && Player.m_localPlayer && Player.m_localPlayer.InPlaceMode()
+                && Release250.IsBuildHammer(Player.m_localPlayer);
             bool drag = DragBuilding.Active;
             if (!paste && !hammer && !drag) return;
 

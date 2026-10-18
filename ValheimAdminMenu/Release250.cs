@@ -128,8 +128,9 @@ namespace ValheimAdminMenu
             var phase = Plugin.Instance?.Phase;
             if (phase == null) return;
             var player = Player.m_localPlayer;
-            if (!player || player.IsDead())
+            if (!player || player.IsDead() || player.IsTeleporting())
             {
+                ClearTransientBuildState(player);
                 VfxSuite.Tick(null);
                 return;
             }
@@ -160,6 +161,19 @@ namespace ValheimAdminMenu
             TickMountNext(player);
         }
 
+        /// <summary>Drop paste/drag/freecam-build/mount float state (death, portal, scene reset).</summary>
+        internal static void ClearTransientBuildState(Player player)
+        {
+            if (PastePreviewActive) CancelPastePreview(silent: true);
+            else DestroyPasteGhosts();
+            DragBuilding.Cancel();
+            FreeBuildRotation.HideAxesPublic();
+            RestoreFreecamBuild(player);
+            DetachLoose(player);
+            RestoreFlyingBody();
+            EnsurePlayerPhysics(player);
+        }
+
         internal static void ResetSession()
         {
             CopyCorners.Clear();
@@ -167,10 +181,19 @@ namespace ValheimAdminMenu
             VfxSuite.ResetSession();
             photoOwnedHud = false;
             RestoreMinimapZoomRange();
-            CancelPastePreview(silent: true);
-            RestoreFreecamBuild(Player.m_localPlayer);
-            DetachLoose(Player.m_localPlayer);
-            RestoreFlyingBody();
+            ClearTransientBuildState(Player.m_localPlayer);
+        }
+
+        /// <summary>Hammer/build tool only — not hoe or cultivator.</summary>
+        internal static bool IsBuildHammer(Player player)
+        {
+            if (!player) return false;
+            var shared = Reflection.Get<ItemDrop.ItemData>(player, "m_rightItem")?.m_shared;
+            if (shared == null || shared.m_buildPieces == null) return false;
+            string name = shared.m_name ?? "";
+            if (name.IndexOf("cultivator", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            if (name.IndexOf("hoe", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            return true;
         }
 
         // Item spawn destinations
@@ -1885,9 +1908,17 @@ namespace ValheimAdminMenu
         private static void TickFreecamBuild(Player player)
         {
             var phase = Plugin.Instance.Phase;
-            if (!phase.FreecamBuild)
+            if (!player || player.IsDead() || player.IsTeleporting())
             {
                 RestoreFreecamBuild(player);
+                EnsurePlayerPhysics(player);
+                DragBuilding.Cancel();
+                return;
+            }
+            if (!phase.FreecamBuild)
+            {
+                if (buildCamOwned) RestoreFreecamBuild(player);
+                else EnsurePlayerPhysics(player);
                 return;
             }
             if (GameCamera.instance && !GameCamera.InFreeFly())
@@ -1912,6 +1943,7 @@ namespace ValheimAdminMenu
         internal static void StickFreecam(Player player, Vector3 pos)
         {
             if (!player || Plugin.Instance?.Phase.FreecamBuild != true) return;
+            if (player.IsTeleporting()) return;
             player.transform.position = pos;
             if (!buildBody) buildBody = player.GetComponent<Rigidbody>();
             if (buildBody)
@@ -1930,8 +1962,45 @@ namespace ValheimAdminMenu
             buildCamOwned = false;
             if (buildBody)
             {
-                buildBody.useGravity = buildPrevGravity;
+                buildBody.useGravity = true;
                 buildBody = null;
+            }
+            else if (player)
+            {
+                var body = player.GetComponent<Rigidbody>();
+                if (body) body.useGravity = true;
+            }
+            ResetAirAltitude(player);
+        }
+
+        /// <summary>Clear leftover no-gravity / freefall state after freecam-build, portals, or mount detach.</summary>
+        internal static void EnsurePlayerPhysics(Player player)
+        {
+            if (!player) return;
+            var phase = Plugin.Instance?.Phase;
+            bool keepFloat = phase != null && (phase.FreecamBuild || phase.FlyingMount || player.IsDebugFlying());
+            if (keepFloat) return;
+            var body = player.GetComponent<Rigidbody>();
+            if (body && !body.useGravity)
+            {
+                body.useGravity = true;
+                body.linearVelocity = new Vector3(body.linearVelocity.x, Mathf.Min(0f, body.linearVelocity.y), body.linearVelocity.z);
+            }
+            ResetAirAltitude(player);
+        }
+
+        private static void ResetAirAltitude(Player player)
+        {
+            if (!player) return;
+            try
+            {
+                float y = player.transform.position.y;
+                Reflection.Set(player, "m_maxAirAltitude", y);
+                Reflection.Set(player, "m_baseAirAltitude", y);
+            }
+            catch
+            {
+                try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
             }
         }
 
@@ -1940,6 +2009,12 @@ namespace ValheimAdminMenu
             if (Plugin.Instance.Phase.FlyingMount != true)
             {
                 RestoreFlyingBody();
+                return;
+            }
+            if (!player || player.IsTeleporting() || player.IsDead())
+            {
+                RestoreFlyingBody();
+                EnsurePlayerPhysics(player);
                 return;
             }
             var saddle = CurrentSaddle(player);
@@ -1965,7 +2040,7 @@ namespace ValheimAdminMenu
         private static void RestoreFlyingBody()
         {
             if (!looseBodyOwned || !looseBody) { looseBodyOwned = false; looseBody = null; return; }
-            looseBody.useGravity = loosePrevGravity;
+            looseBody.useGravity = true;
             looseBodyOwned = false;
             looseBody = null;
         }
@@ -2045,9 +2120,10 @@ namespace ValheimAdminMenu
         {
             if (!looseMount)
                 return;
-            if (looseMount.IsDead())
+            if (!player || player.IsTeleporting() || player.IsDead() || looseMount.IsDead())
             {
                 DetachLoose(player);
+                EnsurePlayerPhysics(player);
                 return;
             }
             Vector3 seat = looseMount.transform.TransformPoint(new Vector3(0f, 1.15f, 0.15f));
@@ -2153,7 +2229,7 @@ namespace ValheimAdminMenu
             looseAi = null;
             if (loosePlayerBody)
             {
-                loosePlayerBody.useGravity = loosePlayerPrevGravity;
+                loosePlayerBody.useGravity = true;
                 loosePlayerBody.isKinematic = loosePlayerWasKinematic;
                 loosePlayerBody = null;
             }
@@ -2161,6 +2237,7 @@ namespace ValheimAdminMenu
             looseMount = null;
             MountNextArmed = false;
             mountNextCandidate = null;
+            EnsurePlayerPhysics(player);
         }
 
         internal static string SpawnModeLabel(int mode)
@@ -2359,15 +2436,7 @@ namespace ValheimAdminMenu
             catch (Exception ex) { Plugin.Instance?.Report(ex.Message); }
         }
 
-        private static bool HoldingBuildHammer(Player player)
-        {
-            var shared = Reflection.Get<ItemDrop.ItemData>(player, "m_rightItem")?.m_shared;
-            if (shared == null || shared.m_buildPieces == null) return false;
-            string name = shared.m_name ?? "";
-            if (name.IndexOf("cultivator", StringComparison.OrdinalIgnoreCase) >= 0) return false;
-            if (name.IndexOf("hoe", StringComparison.OrdinalIgnoreCase) >= 0) return false;
-            return true;
-        }
+        private static bool HoldingBuildHammer(Player player) => Release250.IsBuildHammer(player);
     }
 
     [HarmonyPatch(typeof(Player), "Update")]
