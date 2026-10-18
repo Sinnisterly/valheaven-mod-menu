@@ -615,6 +615,99 @@ namespace ValheimAdminMenu
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
+        internal void ApplyTerrainProfile(BlueprintTerrainDto terrain, Vector3 origin, Quaternion rotation)
+        {
+            app.RequireWorld();
+            if (terrain == null || terrain.heights == null || terrain.width < 2)
+                throw new InvalidOperationException("No terrain profile on the clipboard.");
+            int width = terrain.width;
+            if (terrain.heights.Length != width * width)
+                throw new InvalidOperationException("Terrain profile size mismatch.");
+            float spacing = Mathf.Clamp(terrain.spacing <= 0f ? 1f : terrain.spacing, 0.25f, 4f);
+            float feather = 4f;
+            float half = (width - 1) * spacing * 0.5f;
+            Vector3 localCenter = new Vector3(terrain.originX, 0f, terrain.originZ);
+            Vector3 worldCenter = origin + rotation * localCenter;
+            float reach = half + feather + 8f;
+            var maps = new List<Heightmap>();
+            Heightmap.FindHeightmap(worldCenter, reach, maps);
+            if (maps.Count == 0) throw new InvalidOperationException("No loaded terrain under the profile.");
+            var owned = new List<(Heightmap map, TerrainComp comp)>();
+            foreach (var map in maps)
+            {
+                var compiler = map.GetAndCreateTerrainCompiler();
+                if (!compiler || !Own(compiler.gameObject)) continue;
+                owned.Add((map, compiler));
+            }
+            if (owned.Count == 0)
+                throw new InvalidOperationException("Could not claim ownership of terrain compilers in range.");
+            CaptureUndo(owned, worldCenter, reach, "bbp-terrain");
+            var inv = Quaternion.Inverse(rotation);
+            foreach (var (map, compiler) in owned)
+                BlendTerrainProfile(compiler, map, terrain, origin, inv, spacing, feather);
+            if (ClutterSystem.instance) ClutterSystem.instance.ResetGrass(worldCenter, reach);
+            app.Report("Applied blueprint terrain profile (" + width + "x" + width + ").");
+        }
+
+        private static void BlendTerrainProfile(
+            TerrainComp comp, Heightmap map, BlueprintTerrainDto terrain,
+            Vector3 origin, Quaternion invRot, float spacing, float feather)
+        {
+            var changed = Reflection.Get<bool[]>(comp, "m_modifiedHeight");
+            var level = Reflection.Get<float[]>(comp, "m_levelDelta");
+            var smooth = Reflection.Get<float[]>(comp, "m_smoothDelta");
+            int pitch = map.m_width + 1;
+            int width = terrain.width;
+            float half = (width - 1) * spacing * 0.5f;
+            float radius = terrain.radius > 0f ? terrain.radius : half;
+            for (int y = 0; y < pitch; y++)
+            {
+                for (int x = 0; x < pitch; x++)
+                {
+                    int index = y * pitch + x;
+                    if (index >= level.Length || index >= smooth.Length || index >= changed.Length) continue;
+                    Vector3 pos = map.transform.position + new Vector3((x - map.m_width / 2f) * map.m_scale, 0f, (y - map.m_width / 2f) * map.m_scale);
+                    Vector3 local = invRot * (pos - origin);
+                    float lx = local.x - terrain.originX;
+                    float lz = local.z - terrain.originZ;
+                    float dist = Mathf.Sqrt(lx * lx + lz * lz);
+                    if (dist > radius + feather) continue;
+                    float gx = lx / spacing + (width - 1) * 0.5f;
+                    float gz = lz / spacing + (width - 1) * 0.5f;
+                    if (gx < -0.01f || gz < -0.01f || gx > width - 0.99f || gz > width - 0.99f) continue;
+                    float targetRel = SampleGridBilinear(terrain.heights, width, gx, gz);
+                    float worldH = map.GetHeight(x, y) + map.transform.position.y;
+                    float desired = origin.y + targetRel;
+                    float t = dist <= radius ? 0f : Mathf.SmoothStep(0f, 1f, (dist - radius) / Mathf.Max(0.05f, feather));
+                    desired = Mathf.Lerp(desired, worldH, t);
+                    if (Mathf.Abs(desired - worldH) > 8.05f) continue;
+                    float add = desired - worldH + smooth[index];
+                    smooth[index] = 0f;
+                    level[index] = Mathf.Clamp(level[index] + add, -8f, 8f);
+                    changed[index] = true;
+                }
+            }
+            Reflection.Set(comp, "m_lastOpPoint", map.transform.position);
+            Reflection.Set(comp, "m_lastOpRadius", map.m_width * map.m_scale);
+            Reflection.Method(typeof(TerrainComp), "Save", typeof(bool)).Invoke(comp, new object[] { false });
+            map.Poke(1);
+        }
+
+        private static float SampleGridBilinear(float[] heights, int width, float gx, float gz)
+        {
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(gx), 0, width - 1);
+            int z0 = Mathf.Clamp(Mathf.FloorToInt(gz), 0, width - 1);
+            int x1 = Mathf.Min(x0 + 1, width - 1);
+            int z1 = Mathf.Min(z0 + 1, width - 1);
+            float tx = Mathf.Clamp01(gx - x0);
+            float tz = Mathf.Clamp01(gz - z0);
+            float a = heights[z0 * width + x0];
+            float b = heights[z0 * width + x1];
+            float c = heights[z1 * width + x0];
+            float d = heights[z1 * width + x1];
+            return Mathf.Lerp(Mathf.Lerp(a, b, tx), Mathf.Lerp(c, d, tx), tz);
+        }
+
         internal List<Minimap.PinData> Pins()
         {
             if (!Minimap.instance) return new List<Minimap.PinData>();

@@ -306,7 +306,7 @@ namespace ValheimAdminMenu
         private void BuildPage()
         {
             RememberScroll();
-            ClearHover();ClosePopup();refreshers.Clear();Clear(body);subNavImages.Clear();
+            ClearHover();ClosePopup();refreshers.Clear();ResetFolds();Clear(body);subNavImages.Clear();
             if(subNav){Clear(subNav);subNav.gameObject.SetActive(false);}
             pageTitle.text=TabLabel(tab);
             for(int i=0;i<navImages.Count;i++)

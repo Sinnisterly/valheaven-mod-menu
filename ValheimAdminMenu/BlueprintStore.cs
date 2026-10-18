@@ -20,8 +20,8 @@ namespace ValheimAdminMenu
         public string name = "";
         public string savedUtc = "";
         public int pieceCount;
-        // Arrays, not List<>: JsonUtility round-trips nested pieces reliably.
         public BlueprintPieceDto[] pieces = Array.Empty<BlueprintPieceDto>();
+        public BlueprintTerrainDto terrain;
     }
 
     [Serializable]
@@ -33,6 +33,18 @@ namespace ValheimAdminMenu
         public float sx = 1f, sy = 1f, sz = 1f;
     }
 
+    [Serializable]
+    internal sealed class BlueprintTerrainDto
+    {
+        public int version = 1;
+        public int width;
+        public float spacing = 1f;
+        public float radius;
+        public float originX;
+        public float originZ;
+        public float[] heights;
+    }
+
     /// <summary>Named blueprints (prefab + local pose). Library JSON is global; shareable .vbp files are self-contained under BlueprintsDir.</summary>
     internal static class BlueprintStore
     {
@@ -40,7 +52,7 @@ namespace ValheimAdminMenu
         private const int MaxNameLen = 64;
         private const int MaxBlueprints = 100;
         private const int MaxPiecesPerBlueprint = Release250.MaxClipboardPieces;
-        private const long MaxImportBytes = 8L * 1024L * 1024L;
+        private const long MaxImportBytes = 32L * 1024L * 1024L;
 
         internal static string LibraryPath => AppPaths.BlueprintsPath;
         internal static string ExportDir => AppPaths.BlueprintsDir;
@@ -111,6 +123,7 @@ namespace ValheimAdminMenu
             record.savedUtc = DateTime.UtcNow.ToString("o");
             record.pieces = Release250.Clipboard.Select(ToDto).Where(p => p != null).ToArray();
             record.pieceCount = record.pieces.Length;
+            record.terrain = CloneTerrain(Release250.ClipboardTerrain);
             if (record.pieceCount == 0)
                 throw new InvalidOperationException("Clipboard had no valid pieces to save.");
             SaveDisk();
@@ -132,7 +145,9 @@ namespace ValheimAdminMenu
                 var piece = FromDto(dto);
                 if (piece != null) Release250.Clipboard.Add(piece);
             }
+            Release250.ClipboardTerrain = CloneTerrain(record.terrain);
             Plugin.Instance.Report("Loaded \"" + record.name + "\" (" + Release250.Clipboard.Count + " pieces).");
+            Release250.MaybeAutoPastePreview();
         }
 
         internal static void Rename(string fromName, string toName)
@@ -178,7 +193,8 @@ namespace ValheimAdminMenu
                 name = record.name,
                 savedUtc = string.IsNullOrEmpty(record.savedUtc) ? DateTime.UtcNow.ToString("o") : record.savedUtc,
                 pieceCount = record.pieces.Length,
-                pieces = ClonePieces(record.pieces)
+                pieces = ClonePieces(record.pieces),
+                terrain = CloneTerrain(record.terrain)
             };
             string json = BlueprintJson.WriteRecord(payload);
             if (string.IsNullOrEmpty(json) || json.IndexOf("\"pieces\"", StringComparison.OrdinalIgnoreCase) < 0)
@@ -195,16 +211,26 @@ namespace ValheimAdminMenu
         internal static void ImportFile(string fileNameOrPath)
         {
             if (string.IsNullOrWhiteSpace(fileNameOrPath))
-                throw new ArgumentException("Enter a .vbp file name or path.");
+                throw new ArgumentException("Enter a .vbp / .bbp / .blueprint file name or path.");
             string path = ResolveImportPath(fileNameOrPath.Trim());
             if (!File.Exists(path))
                 throw new FileNotFoundException("Blueprint file not found: " + Path.GetFileName(path));
             if (new FileInfo(path).Length > MaxImportBytes)
                 throw new InvalidOperationException("Import file exceeds " + (MaxImportBytes / (1024 * 1024)) + " MB.");
 
-            string content = File.ReadAllText(path);
+            var bytes = File.ReadAllBytes(path);
+            if (BlueprintBbp.LooksLikeBbp(path, bytes))
+            {
+                var bbp = BlueprintBbp.Parse(bytes, Path.GetFileNameWithoutExtension(path));
+                UpsertImported(bbp);
+                SaveDisk();
+                string terrainNote = bbp.terrain != null ? " + terrain" : "";
+                Plugin.Instance.Report("Imported BBP \"" + bbp.name + "\" (" + bbp.pieceCount + " pieces" + terrainNote + ").");
+                return;
+            }
 
-            // PlanBuild .blueprint
+            string content = Encoding.UTF8.GetString(bytes);
+
             if (content.StartsWith("#Name:") || path.EndsWith(".blueprint", StringComparison.OrdinalIgnoreCase))
             {
                 var planBuildRecord = ParsePlanBuild(content, Path.GetFileNameWithoutExtension(path));
@@ -217,7 +243,6 @@ namespace ValheimAdminMenu
                 }
             }
 
-            // Single-record .vbp
             var single = BlueprintJson.ParseRecord(content);
             NormalizePieces(single);
             if (single != null && HasPieces(single) && !string.IsNullOrWhiteSpace(single.name))
@@ -227,13 +252,11 @@ namespace ValheimAdminMenu
                 Plugin.Instance.Report("Imported \"" + single.name + "\" (" + single.pieceCount + " pieces).");
                 return;
             }
-            // Old stub .vbp (metadata only, no pieces) cannot be shared
             if (single != null && !string.IsNullOrWhiteSpace(single.name) && !HasPieces(single)
                 && content.IndexOf("\"pieces\"", StringComparison.OrdinalIgnoreCase) < 0)
                 throw new InvalidOperationException(
                     "\"" + single.name + "\" is an incomplete .vbp (no pieces). Re-export with this Valheaven build.");
 
-            // Full library dump
             var lib = BlueprintJson.ParseLibrary(content);
             if (lib?.blueprints != null && lib.blueprints.Count > 0)
             {
@@ -325,7 +348,10 @@ namespace ValheimAdminMenu
             {
                 if (!Directory.Exists(ExportDir)) return Array.Empty<string>();
                 return Directory.GetFiles(ExportDir, "*.*")
-                    .Where(f => f.EndsWith(".vbp", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".blueprint", StringComparison.OrdinalIgnoreCase))
+                    .Where(f =>
+                        f.EndsWith(".vbp", StringComparison.OrdinalIgnoreCase)
+                        || f.EndsWith(".blueprint", StringComparison.OrdinalIgnoreCase)
+                        || f.EndsWith(".bbp", StringComparison.OrdinalIgnoreCase))
                     .Select(Path.GetFileName)
                     .Where(f => !string.IsNullOrEmpty(f))
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
@@ -384,6 +410,7 @@ namespace ValheimAdminMenu
             existing.savedUtc = string.IsNullOrEmpty(incoming.savedUtc) ? DateTime.UtcNow.ToString("o") : incoming.savedUtc;
             existing.pieces = ClonePieces(incoming.pieces.Where(p => p != null && !string.IsNullOrWhiteSpace(p.prefab)).ToArray());
             existing.pieceCount = existing.pieces.Length;
+            existing.terrain = CloneTerrain(incoming.terrain);
             if (existing.pieceCount == 0)
                 throw new InvalidOperationException("Imported blueprint \"" + name + "\" had no valid pieces.");
         }
@@ -418,12 +445,33 @@ namespace ValheimAdminMenu
             return copy;
         }
 
+        internal static BlueprintTerrainDto CloneTerrain(BlueprintTerrainDto source)
+        {
+            if (source == null || source.heights == null || source.heights.Length == 0) return null;
+            var copy = new BlueprintTerrainDto
+            {
+                version = source.version,
+                width = source.width,
+                spacing = source.spacing,
+                radius = source.radius,
+                originX = source.originX,
+                originZ = source.originZ,
+                heights = new float[source.heights.Length]
+            };
+            Array.Copy(source.heights, copy.heights, source.heights.Length);
+            return copy;
+        }
+
         private static string ResolveImportPath(string input)
         {
             if (Path.IsPathRooted(input)) return Path.GetFullPath(input);
             string inExport = Path.Combine(ExportDir, input);
-            if (!inExport.EndsWith(".vbp", StringComparison.OrdinalIgnoreCase) && !inExport.EndsWith(".blueprint", StringComparison.OrdinalIgnoreCase))
+            if (!Path.HasExtension(inExport))
+            {
+                if (File.Exists(inExport + ".bbp")) return inExport + ".bbp";
+                if (File.Exists(inExport + ".blueprint")) return inExport + ".blueprint";
                 inExport += ".vbp";
+            }
             if (File.Exists(inExport)) return inExport;
             string beside = Path.Combine(AppPaths.Root, input);
             if (File.Exists(beside)) return beside;

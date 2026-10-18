@@ -75,6 +75,10 @@ namespace ValheimAdminMenu
         public bool minimapZoomControl, tpToPing, disablePortalFade, sitMountAnywhere;
         public bool freecamBuild, meleeTargetLock, meleeLockPlayers, flyingMount, mountAnyCreature;
         public bool pasteLevelGround, pasteLevelPerPiece, levelOnPlace;
+        public bool autoPastePreview = true, pasteSnapToGround = true, pasteAnchorSnap, applyTerrainProfile;
+        public bool freeBuildRotation, freeBuildRotationLocal, universalSnap = true, dragBuilding = true, placementHud = true;
+        public bool hudRotation = true, hudAxisStep = true, hudPieceCount = true, hudLockState = true, hudGroundSnap = true, hudInTerrain = true, hudPrefabName = true;
+        public int rotationSnapDivisions = 45, dragMaxPieces = 500;
         public float pasteFeather = 6f;
         public float brushFeather = 6f;
         public bool groundSpawnAtCrosshair = true;
@@ -134,6 +138,8 @@ namespace ValheimAdminMenu
             stackSizeOverride = Mathf.Clamp(stackSizeOverride, 0, InventoryCapacity.MaxStackOverride);
             pasteFeather = Clamp(pasteFeather, 0f, 12f, 6f);
             brushFeather = Clamp(brushFeather, 0f, 12f, 6f);
+            if (rotationSnapDivisions < 2 || rotationSnapDivisions > 256) rotationSnapDivisions = 45;
+            if (dragMaxPieces < 10 || dragMaxPieces > 500) dragMaxPieces = 500;
             espContainerLines = Mathf.Clamp(espContainerLines, 1, 64);
             if (!playerInvOverrideSet)
             {
@@ -322,6 +328,12 @@ namespace ValheimAdminMenu
             p2.FreecamBuild=Data.freecamBuild;p2.MeleeTargetLock=Data.meleeTargetLock;p2.MeleeLockPlayers=Data.meleeLockPlayers;
             p2.FlyingMount=Data.flyingMount;p2.MountAnyCreature=Data.mountAnyCreature;
             Release250.PasteLevelGround=Data.pasteLevelGround;Release250.PasteLevelPerPiece=Data.pasteLevelPerPiece;Release250.LevelOnPlace=Data.levelOnPlace;Release250.PasteFeather=Data.pasteFeather;
+            Release250.AutoPastePreview=Data.autoPastePreview;Release250.PasteSnapToGround=Data.pasteSnapToGround;Release250.PasteAnchorSnap=Data.pasteAnchorSnap;Release250.ApplyTerrainProfile=Data.applyTerrainProfile;
+            FreeBuildRotation.Enabled=Data.freeBuildRotation;FreeBuildRotation.LocalFrame=Data.freeBuildRotationLocal;FreeBuildRotation.SnapDivisions=Mathf.Clamp(Data.rotationSnapDivisions,2,256);
+            PlacementSnap.UniversalSnap=Data.universalSnap;
+            DragBuilding.Enabled=Data.dragBuilding;DragBuilding.MaxPieces=Mathf.Clamp(Data.dragMaxPieces,10,500);
+            PlacementHud.Enabled=Data.placementHud;PlacementHud.ShowRotation=Data.hudRotation;PlacementHud.ShowAxisStep=Data.hudAxisStep;PlacementHud.ShowPieceCount=Data.hudPieceCount;
+            PlacementHud.ShowLockState=Data.hudLockState;PlacementHud.ShowGroundSnap=Data.hudGroundSnap;PlacementHud.ShowInTerrain=Data.hudInTerrain;PlacementHud.ShowPrefabName=Data.hudPrefabName;
             InventoryCapacity.OverrideBagSize = Data.playerInvOverride;
             InventoryCapacity.PlayerRows = Data.playerInvRows;
             InventoryCapacity.PlayerExtraCols = Data.playerInvExtraCols;
@@ -423,6 +435,12 @@ namespace ValheimAdminMenu
             }
             }
             Data.pasteLevelGround=Release250.PasteLevelGround;Data.pasteLevelPerPiece=Release250.PasteLevelPerPiece;Data.levelOnPlace=Release250.LevelOnPlace;Data.pasteFeather=Release250.PasteFeather;
+            Data.autoPastePreview=Release250.AutoPastePreview;Data.pasteSnapToGround=Release250.PasteSnapToGround;Data.pasteAnchorSnap=Release250.PasteAnchorSnap;Data.applyTerrainProfile=Release250.ApplyTerrainProfile;
+            Data.freeBuildRotation=FreeBuildRotation.Enabled;Data.freeBuildRotationLocal=FreeBuildRotation.LocalFrame;Data.rotationSnapDivisions=FreeBuildRotation.SnapDivisions;
+            Data.universalSnap=PlacementSnap.UniversalSnap;
+            Data.dragBuilding=DragBuilding.Enabled;Data.dragMaxPieces=DragBuilding.MaxPieces;
+            Data.placementHud=PlacementHud.Enabled;Data.hudRotation=PlacementHud.ShowRotation;Data.hudAxisStep=PlacementHud.ShowAxisStep;Data.hudPieceCount=PlacementHud.ShowPieceCount;
+            Data.hudLockState=PlacementHud.ShowLockState;Data.hudGroundSnap=PlacementHud.ShowGroundSnap;Data.hudInTerrain=PlacementHud.ShowInTerrain;Data.hudPrefabName=PlacementHud.ShowPrefabName;
             Data.playerInvOverride = InventoryCapacity.OverrideBagSize;
             Data.playerInvOverrideSet = true;
             Data.playerInvRows = InventoryCapacity.PlayerRows;

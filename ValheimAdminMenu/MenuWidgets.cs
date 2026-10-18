@@ -109,15 +109,109 @@ namespace ValheimAdminMenu
         }
         private RectTransform Row(Transform parent,float height)
         {var row=Node(parent,"Row");if(SettingsDense && height==46)height=38;Fixed(row,height);return row;}
-        private void Section(Transform parent,string text)
+
+        private static readonly System.Collections.Generic.Dictionary<string, bool> foldOpen =
+            new System.Collections.Generic.Dictionary<string, bool>(System.StringComparer.Ordinal);
+        private Transform foldPage;
+        private Transform foldBody;
+        private int foldSeq;
+
+        private void ResetFolds()
         {
-            var row=Row(parent,SettingsDense?32:42);
-            string shown=L.TValue(text).ToUpperInvariant();
-            var label=Label(row,shown,13,Gold,localize:false);Stretch(label.rectTransform,0,SettingsDense?6:12,0,SettingsDense?6:8);label.characterSpacing=1.4f;
-            var line=Box(row,"Section rule",Line);line.anchorMin=new Vector2(0,0);line.anchorMax=new Vector2(1,0);line.pivot=new Vector2(.5f,0);line.sizeDelta=new Vector2(0,1);
+            foldPage = null;
+            foldBody = null;
+            foldSeq = 0;
         }
+
+        private Transform ResolveParent(Transform parent)
+        {
+            if (foldBody != null && foldPage == parent) return foldBody;
+            return parent;
+        }
+
+        private string FoldKey(string title) => tab + ":" + (tab >= 0 && tab < subTabs.Length ? subTabs[tab] : 0) + ":" + title;
+
+        private bool IsFoldOpen(string title, bool defaultOpen)
+        {
+            string key = FoldKey(title);
+            bool open;
+            if (foldOpen.TryGetValue(key, out open)) return open;
+            return defaultOpen;
+        }
+
+        private void SetFoldOpen(string title, bool open)
+        {
+            foldOpen[FoldKey(title)] = open;
+        }
+
+        private RectTransform Fold(Transform parent, string text, bool defaultOpen)
+        {
+            string shown = L.TValue(text);
+            bool open = IsFoldOpen(shown, defaultOpen);
+            var shell = Node(parent, "Fold " + shown);
+            var shellLayout = shell.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            shellLayout.spacing = 2;
+            shellLayout.childControlWidth = true;
+            shellLayout.childControlHeight = true;
+            shellLayout.childForceExpandWidth = true;
+            shellLayout.childForceExpandHeight = false;
+
+            float headH = SettingsDense ? 34 : 40;
+            var header = Box(shell, "Header", new Color(.12f, .11f, .09f, 1f), true);
+            Fixed(header, headH);
+            Border(header, GoldDim);
+            // Averia lacks triangle glyphs; ASCII matches SelectRow "v".
+            var chevron = Label(header, open ? "v" : ">", 16, Gold, localize: false);
+            chevron.alignment = TextAlignmentOptions.Center;
+            At(chevron.rectTransform, 4, SettingsDense ? 6 : 8, 22, headH - 12);
+            ChromeCaption(chevron);
+            var title = Label(header, shown.ToUpperInvariant(), 13, Gold, localize: false);
+            title.characterSpacing = 1.2f;
+            Stretch(title.rectTransform, 28, SettingsDense ? 6 : 10, 8, SettingsDense ? 6 : 8);
+
+            var body = Node(shell, "Body");
+            var bodyLayout = body.gameObject.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            bodyLayout.spacing = 3;
+            bodyLayout.padding = new RectOffset(8, 2, 2, 6);
+            bodyLayout.childControlWidth = true;
+            bodyLayout.childControlHeight = true;
+            bodyLayout.childForceExpandWidth = true;
+            bodyLayout.childForceExpandHeight = false;
+            body.gameObject.SetActive(open);
+
+            var button = header.gameObject.AddComponent<UnityEngine.UI.Button>();
+            button.targetGraphic = header.GetComponent<UnityEngine.UI.Image>();
+            button.navigation = new UnityEngine.UI.Navigation { mode = UnityEngine.UI.Navigation.Mode.None };
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.2f, 1.15f, 1.05f);
+            colors.pressedColor = new Color(.85f, .8f, .7f);
+            colors.fadeDuration = .08f;
+            button.colors = colors;
+            string foldTitle = shown;
+            button.onClick.AddListener(() =>
+            {
+                ClearHover();
+                bool next = !body.gameObject.activeSelf;
+                body.gameObject.SetActive(next);
+                SetFoldOpen(foldTitle, next);
+                if (chevron) chevron.text = next ? "v" : ">";
+                if (pageScroll) UnityEngine.UI.LayoutRebuilder.MarkLayoutForRebuild(pageScroll.content);
+            });
+            return body;
+        }
+
+        private void Section(Transform parent, string text, bool? defaultOpen = null)
+        {
+            bool open = defaultOpen ?? (foldSeq == 0);
+            foldSeq++;
+            foldPage = parent;
+            foldBody = Fold(parent, text, open);
+        }
+
         private void Note(Transform parent,string text)
         {
+            parent = ResolveParent(parent);
             var t=Label(parent,text,15,Muted);
             t.alignment=TextAlignmentOptions.TopLeft;
             Fixed(t.rectTransform,44);
@@ -127,6 +221,7 @@ namespace ValheimAdminMenu
         {if(Player.m_localPlayer)return true;Note(parent,"Enter a world to use these controls.");return false;}
         private void ToggleRow(Transform parent,string name,Func<bool> read,Action<bool> write,string help=null)
         {
+            parent = ResolveParent(parent);
             float minH=SettingsDense?36:43;
             var row=Box(parent,name,Color.clear,true);Fixed(row,minH);
             var text=Label(row,name,17);LabelColumn(text,.78f);
@@ -141,6 +236,7 @@ namespace ValheimAdminMenu
         }
         private UnityEngine.UI.Slider SliderRow(Transform parent,string name,Func<float> read,Action<float> write,float min,float max,string help,bool whole=false)
         {
+            parent = ResolveParent(parent);
             var row=Row(parent,69);var nameLabel=Label(row,name,17);LabelColumn(nameLabel,.72f);nameLabel.alignment=TextAlignmentOptions.TopLeft;
             FitWrappedRow(row,nameLabel,69,38f,90f);
             var value=Label(row,"",15,Gold);value.alignment=TextAlignmentOptions.MidlineRight;value.rectTransform.anchorMin=new Vector2(1,1);value.rectTransform.anchorMax=new Vector2(1,1);value.rectTransform.pivot=new Vector2(1,1);value.rectTransform.sizeDelta=new Vector2(80,31);
@@ -170,6 +266,7 @@ namespace ValheimAdminMenu
         }
         private TMP_InputField Field(Transform parent,string name,string value,Action<string> changed,string help=null,int limit=80)
         {
+            parent = ResolveParent(parent);
             var row=Row(parent,44);var text=Label(row,name,17);LabelColumn(text,.46f);
             FitWrappedRow(row,text,44,10f,0f);
             var input=InputBox(row,value,changed,"",limit);var rect=(RectTransform)input.transform;
@@ -178,6 +275,7 @@ namespace ValheimAdminMenu
         }
         private void ActionRow(Transform parent,string name,string caption,Action action,string help=null,bool danger=false)
         {
+            parent = ResolveParent(parent);
             var row=Row(parent,46);var text=Label(row,name,17);LabelColumn(text,.55f);
             FitWrappedRow(row,text,46,12f,160f);
             var button=ActionButton(row,caption,()=>Run(action),help,danger);var rect=(RectTransform)button.transform;
@@ -186,6 +284,7 @@ namespace ValheimAdminMenu
         }
         private void DangerRow(Transform parent,string name,string caption,string warning,Action action)
         {
+            parent = ResolveParent(parent);
             var row=Row(parent,46);var label=Label(row,name,17);LabelColumn(label,.55f);
             FitWrappedRow(row,label,46,12f,160f);
             var button=ActionButton(row,caption,()=>Confirm(name,warning,action),warning,true);var rect=(RectTransform)button.transform;
@@ -193,6 +292,7 @@ namespace ValheimAdminMenu
         }
         private UnityEngine.UI.Button SelectRow(Transform parent,string label,Func<string> selected,Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string,Action>>> options)
         {
+            parent = ResolveParent(parent);
             var row=Row(parent,44);var name=Label(row,label,17);LabelColumn(name,.46f);
             FitWrappedRow(row,name,44,10f,0f);
             UnityEngine.UI.Button button=null;button=ActionButton(row,"",()=>SelectFrom((RectTransform)button.transform,options()));

@@ -70,7 +70,28 @@ namespace ValheimAdminMenu
                 sb.Append('}');
             }
             if (pieces.Length > 0) sb.Append('\n').Append(indent).Append("  ");
-            sb.Append("]\n").Append(indent).Append('}');
+            sb.Append(']');
+            var terrain = record?.terrain;
+            if (terrain != null && terrain.heights != null && terrain.heights.Length > 0 && terrain.width > 1)
+            {
+                sb.Append(",\n").Append(indent).Append("  \"terrain\": {\n");
+                sb.Append(indent).Append("    \"version\": ").Append(terrain.version).Append(",\n");
+                sb.Append(indent).Append("    \"width\": ").Append(terrain.width).Append(",\n");
+                sb.Append(indent).Append("    \"spacing\": ").Append(F(terrain.spacing)).Append(",\n");
+                sb.Append(indent).Append("    \"radius\": ").Append(F(terrain.radius)).Append(",\n");
+                sb.Append(indent).Append("    \"originX\": ").Append(F(terrain.originX)).Append(",\n");
+                sb.Append(indent).Append("    \"originZ\": ").Append(F(terrain.originZ)).Append(",\n");
+                sb.Append(indent).Append("    \"heights\": [");
+                for (int i = 0; i < terrain.heights.Length; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    if (i % 16 == 0) sb.Append('\n').Append(indent).Append("      ");
+                    sb.Append(F(terrain.heights[i]));
+                }
+                sb.Append('\n').Append(indent).Append("    ]\n");
+                sb.Append(indent).Append("  }");
+            }
+            sb.Append('\n').Append(indent).Append('}');
         }
 
         internal static BlueprintLibrary ParseLibrary(string json)
@@ -139,8 +160,51 @@ namespace ValheimAdminMenu
                 }
             }
             record.pieceCount = record.pieces.Length;
+            record.terrain = ParseTerrain(obj);
             if (string.IsNullOrWhiteSpace(record.name) && record.pieceCount == 0) return null;
             return record;
+        }
+
+        private static BlueprintTerrainDto ParseTerrain(string obj)
+        {
+            int key = IndexOfKey(obj, "terrain");
+            if (key < 0) return null;
+            int start = obj.IndexOf('{', key);
+            int end = FindMatchingBracket(obj, start);
+            if (start < 0 || end <= start) return null;
+            string body = obj.Substring(start, end - start + 1);
+            int width = (int)ReadFloat(body, "width");
+            if (width < 2) return null;
+            int heightsKey = IndexOfKey(body, "heights");
+            if (heightsKey < 0) return null;
+            int arrStart = body.IndexOf('[', heightsKey);
+            int arrEnd = FindMatchingBracket(body, arrStart);
+            if (arrStart < 0 || arrEnd <= arrStart) return null;
+            var heights = new List<float>();
+            string arr = body.Substring(arrStart + 1, arrEnd - arrStart - 1);
+            int i = 0;
+            while (i < arr.Length)
+            {
+                while (i < arr.Length && (char.IsWhiteSpace(arr[i]) || arr[i] == ',')) i++;
+                if (i >= arr.Length) break;
+                int begin = i;
+                if (arr[i] == '-' || arr[i] == '+') i++;
+                while (i < arr.Length && (char.IsDigit(arr[i]) || arr[i] == '.' || arr[i] == 'e' || arr[i] == 'E' || arr[i] == '+' || arr[i] == '-'))
+                    i++;
+                if (i > begin && float.TryParse(arr.Substring(begin, i - begin), NumberStyles.Float, Inv, out float h))
+                    heights.Add(h);
+            }
+            if (heights.Count != width * width) return null;
+            return new BlueprintTerrainDto
+            {
+                version = (int)ReadFloat(body, "version", 1f),
+                width = width,
+                spacing = ReadFloat(body, "spacing", 1f),
+                radius = ReadFloat(body, "radius"),
+                originX = ReadFloat(body, "originX"),
+                originZ = ReadFloat(body, "originZ"),
+                heights = heights.ToArray()
+            };
         }
 
         private static BlueprintPieceDto ParsePiece(string obj)

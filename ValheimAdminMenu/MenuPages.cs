@@ -112,7 +112,7 @@ namespace ValheimAdminMenu
             switch(sub)
             {
                 case 0:
-                    Section(page,"Combat");
+                    Section(page,"Damage & defense");
                     ToggleRow(page,"God mode",()=>Player.m_localPlayer && Player.m_localPlayer.InGodMode(),v=>Run(()=>f.God(v)),"Blocks all damage and keeps health full while enabled.");
                     ToggleRow(page,"One-hit creatures",()=>p.OneHitKill||p.OneHitCreatures,v=>{p.OneHitCreatures=v;p.OneHitKill=v;},"Your attacks defeat creatures in one hit. Separate from structures.");
                     ToggleRow(page,"One-hit structures",()=>p.OneHitStructures,v=>p.OneHitStructures=v,"Your hits destroy buildings and other structures in one hit. Separate from creatures.");
@@ -120,17 +120,19 @@ namespace ValheimAdminMenu
                     SliderRow(page,"Incoming damage",()=>p.IncomingDamageMult,v=>p.IncomingDamageMult=v,0,5,"Multiplies damage you take. 0 blocks damage types that still reach ApplyDamage; God mode still fully blocks. Local player only.");
                     SliderRow(page,"Hit / push force",()=>p.HitPushMult,v=>p.HitPushMult=v,0,10,"Multiplies knockback / push force on your hits. 1 is vanilla.");
                     ToggleRow(page,"Stagger protection",()=>p.StaggerProtection,v=>p.StaggerProtection=v,"Blocks stagger buildup and stagger state on your character.");
+                    Section(page,"Stamina & tools");
                     ToggleRow(page,"Unlimited stamina",()=>f.Stamina,v=>f.Stamina=v,"Keeps stamina full and blocks stamina drain.");
                     ToggleRow(page,"Unlimited eitr",()=>f.Eitr,v=>f.Eitr=v,"Keeps eitr full and blocks eitr drain.");
                     ToggleRow(page,"Instant mining & chopping",()=>e.InstantHarvest,v=>e.InstantHarvest=v,"Breaks ore, trees, and logs in one hit. Ignores hard-tree gates.");
+                    ToggleRow(page,"No tool use delay",()=>p.NoToolDelay,v=>p.NoToolDelay=v,"Removes swing delay between tool and weapon uses.");
+                    ToggleRow(page,"No special-attack cooldown",()=>p.NoSpecialCooldown,v=>p.NoSpecialCooldown=v,"Secondary / special attacks are ready immediately.");
+                    Section(page,"Ranged & aim");
                     ToggleRow(page,"Draw bow immediately",()=>p.DrawBowImmediate,v=>p.DrawBowImmediate=v,"Bows reach full draw as soon as you start drawing. Release to fire.");
                     ToggleRow(page,"Preserve ammunition",()=>p.InfArrows,v=>p.InfArrows=v,"Attacks do not consume ammo or fishing bait (UseAmmo). You still need at least one matching item equipped or in inventory. Covers bows, crossbows, and other ammo types.");
                     SliderRow(page,"Projectile speed",()=>p.ProjectileSpeedMult,v=>p.ProjectileSpeedMult=v,1,10,"Multiplies your local projectile velocity (arrows, bolts, spears, magic). 1 is vanilla. Applied after aim assist / magic bullet so direction stays correct.");
                     ToggleRow(page,"Multishot",()=>p.MultiArrow,v=>p.MultiArrow=v,"Fires multiple projectiles per shot. Hits raise skill; extra shots drain durability unless Unlimited durability is on.");
                     SliderRow(page,"Arrow count",()=>p.ArrowCount,v=>p.ArrowCount=v,2,12,"Projectiles spawned per ranged attack when Multishot is on.",true);
                     SliderRow(page,"Arrow spread",()=>p.ArrowSpread,v=>p.ArrowSpread=v,0,45,"Extra aim cone in degrees added to each multishot volley.");
-                    ToggleRow(page,"Melee multi-hit",()=>p.MeleeMultiHit,v=>p.MeleeMultiHit=v,"Repeats the melee swing resolution. Each repeat raises skill and drains durability unless Unlimited durability is on.");
-                    SliderRow(page,"Melee hits per swing",()=>p.MeleeHits,v=>p.MeleeHits=v,2,10,"How many times one melee swing resolves when Melee multi-hit is on.",true);
                     ToggleRow(page,"Pierce shots",()=>p.PierceShots,v=>p.PierceShots=v,"Your projectiles keep going through creatures and only stop on terrain. Local shots only.");
                     ToggleRow(page,"Bow aim assist",()=>p.BowAimAssist,v=>p.BowAimAssist=v,"While drawing or firing a bow/crossbow/spear, steers aim toward a target in your cone. While on, prediction and local projectiles use zero gravity so aim matches the shot. Local player only.");
                     ToggleRow(page,"Show predicted aim spot",()=>p.ShowAimPredict,v=>p.ShowAimPredict=v,"When Bow aim assist is on, draws a lightweight marker at the predicted lead / impact point.");
@@ -145,14 +147,15 @@ namespace ValheimAdminMenu
                     SliderRow(page,"Aim assist cone",()=>p.BowAimAngle,v=>p.BowAimAngle=v,5,75,"Max degrees from crosshair to pick a target. Magic bullet uses a slightly wider cone.");
                     SliderRow(page,"Aim assist range",()=>p.BowAimRange,v=>p.BowAimRange=v,10,100,"Max target distance for aim assist and magic bullet.");
                     ToggleRow(page,"Aim at players",()=>p.BowAimTargetPlayers,v=>p.BowAimTargetPlayers=v,"Allow bow aim assist / magic bullet to lock onto other players. Off by default for PvE.");
+                    Section(page,"Melee & block");
+                    ToggleRow(page,"Melee multi-hit",()=>p.MeleeMultiHit,v=>p.MeleeMultiHit=v,"Repeats the melee swing resolution. Each repeat raises skill and drains durability unless Unlimited durability is on.");
+                    SliderRow(page,"Melee hits per swing",()=>p.MeleeHits,v=>p.MeleeHits=v,2,10,"How many times one melee swing resolves when Melee multi-hit is on.",true);
                     ToggleRow(page,L.T("combat.melee_lock"),()=>p.MeleeTargetLock,v=>p.MeleeTargetLock=v,L.T("combat.melee_lock.help"));
                     ToggleRow(page,L.T("combat.melee_lock_players"),()=>p.MeleeLockPlayers,v=>p.MeleeLockPlayers=v,L.T("combat.melee_lock_players.help"));
                     ToggleRow(page,"Melee cleave",()=>p.MeleeCleave,v=>p.MeleeCleave=v,"Melee swings use the game multi-hit path so one swing can hit several targets.");
                     SliderRow(page,"Cleave angle bonus",()=>p.CleaveAngleBonus,v=>p.CleaveAngleBonus=v,0,90,"Extra degrees added to the melee hit cone when Melee cleave is on.");
                     ToggleRow(page,"Auto-parry while blocking",()=>p.AutoParry,v=>p.AutoParry=v,"While you hold block, timing stays in the perfect-block window.");
                     SliderRow(page,"Perfect-block window",()=>p.PerfectBlockWindow,v=>p.PerfectBlockWindow=v,1,8,"Multiplies the perfect-block timing window. 1 is vanilla.");
-                    ToggleRow(page,"No special-attack cooldown",()=>p.NoSpecialCooldown,v=>p.NoSpecialCooldown=v,"Secondary / special attacks are ready immediately.");
-                    ToggleRow(page,"No tool use delay",()=>p.NoToolDelay,v=>p.NoToolDelay=v,"Removes swing delay between tool and weapon uses.");
                     Section(page,"Fishing");
                     ToggleRow(page,"Unlimited bait",()=>p.UnlimitedBait,v=>p.UnlimitedBait=v,"Casting does not consume bait. You still need at least one bait. Infinite arrows also covers bait.");
                     ToggleRow(page,"Attract fish",()=>p.AttractFish,v=>p.AttractFish=v,"Nearby fish take interest in your float much more reliably.");
@@ -269,7 +272,7 @@ namespace ValheimAdminMenu
             switch(sub)
             {
                 case 0:
-                    Section(page,"Placement");
+                    Section(page,"Placement rules");
                     ToggleRow(page,"Free building",()=>Player.m_localPlayer && Player.m_localPlayer.PlacementCostDisabled,v=>Run(()=>f.NoCost(v)),"Place building pieces without spending materials.");
                     ToggleRow(page,"Build everywhere",()=>p.BuildEverywhere,v=>p.BuildEverywhere=v,"Ignores most placement location blocks.");
                     ToggleRow(page,"Ignore unstable support",()=>p.IgnoreUnstable,v=>p.IgnoreUnstable=v,"Allows placement when support would be unstable.");
@@ -278,7 +281,12 @@ namespace ValheimAdminMenu
                     ToggleRow(page,"Ignore mystical force",()=>p.IgnoreMysticalForce,v=>p.IgnoreMysticalForce=v,"Bypasses area forces that block building.");
                     ToggleRow(page,"Extended build distance",()=>p.ExtendedBuildDistance,v=>p.ExtendedBuildDistance=v,"Multiplies max place distance while building.");
                     SliderRow(page,"Build distance multiplier",()=>p.BuildDistanceMult,v=>p.BuildDistanceMult=v,1,15,"How far you can place when Extended build distance is on. 1 is vanilla.");
+                    Section(page,"Rotation & snap");
                     ToggleRow(page,"Fine rotation",()=>p.FineBuildRotation,v=>p.FineBuildRotation=v,"Uses 1-degree place rotation steps instead of the coarse vanilla angle.");
+                    ToggleRow(page, L.T("build.free_rotation"), () => FreeBuildRotation.Enabled, v => FreeBuildRotation.Enabled = v, L.T("build.free_rotation.help"));
+                    ToggleRow(page, L.T("build.universal_snap"), () => PlacementSnap.UniversalSnap, v => PlacementSnap.UniversalSnap = v, L.T("build.universal_snap.help"));
+                    ToggleRow(page, L.T("build.drag_enabled"), () => DragBuilding.Enabled, v => DragBuilding.Enabled = v, L.T("build.drag_enabled.help"));
+                    Section(page,"Stations for building");
                     ToggleRow(page,"Infinite workbench radius",()=>p.InfWorkbenchRadius,v=>p.InfWorkbenchRadius=v,"Extends crafting station build range.");
                     ToggleRow(page,"Workbench without roof",()=>p.WorkbenchNoRoof,v=>p.WorkbenchNoRoof=v,"Uses workbenches that are not covered.");
                     ToggleRow(page,"Station level 10",()=>p.StationLevel10,v=>p.StationLevel10=v,"Treats nearby crafting stations as level 10.");
@@ -735,6 +743,7 @@ namespace ValheimAdminMenu
             Section(page,L.T("settings.section.achievements"));
             DangerRow(page,L.T("settings.cheat_flag"),L.T("settings.cheat_flag.action"),L.T("settings.cheat_flag.warning"),()=>app.ClearCharacterCheatFlag());
             Section(page,L.T("settings.section.credits"));
+            Note(page,"Valheaven version " + Plugin.ProductVersion);
             Note(page,L.T("settings.credits.note"));
         }
                 private void EventsPage(RectTransform page)

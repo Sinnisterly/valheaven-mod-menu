@@ -15,7 +15,7 @@ namespace ValheimAdminMenu
     public sealed class Plugin : MonoBehaviour
     {
         public const string Id = "local.valheim.adminmenu";
-        public const string ProductVersion = "2.5.11";
+        public const string ProductVersion = "3.0.0";
         /// <summary>Steam 1.0.7+ (checked through 1.0.20). Reflection.Check is the real gate.</summary>
         private const int MinSupportedPatch = 7;
         internal static Plugin Instance;
@@ -152,6 +152,9 @@ namespace ValheimAdminMenu
             try { Release250.DrawCopyVolume(); }
             catch (ExitGUIException) { throw; }
             catch (Exception ex) { AppLog.Warning("Copy volume draw failed: " + ex.Message); }
+            try { PlacementHud.Draw(); }
+            catch (ExitGUIException) { throw; }
+            catch (Exception ex) { AppLog.Warning("Placement HUD draw failed: " + ex.Message); }
         }
         private void OnApplicationFocus(bool focused) { if (!focused) SetOpen(false); }
         private void OnApplicationQuit()

@@ -2,7 +2,7 @@
 
 Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe` and you're done. It doesn't need BepInEx; if you already use BepInEx for other mods, leave that alone.
 
-- **Version:** 2.5.11
+- **Version:** 3.0.0
 - **Game:** Valheim 1.0.7+ (checked through 1.0.20)
 - **Open menu:** F8 (rebindable in Settings)
 

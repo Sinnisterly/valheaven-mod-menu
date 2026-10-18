@@ -51,36 +51,74 @@ namespace ValheimAdminMenu
                 "Copies buildable pieces in the A-B box. Cap "
                 + Release250.MaxClipboardPieces + ". Large copies are heavy; paste may need host ownership.");
             Section(page, "Paste preview");
-            ActionRow(page, "Preview at feet", "Preview", () => Release250.BeginPastePreview(false), "Shows transparent blue ghosts at your feet. Adjust height/yaw/nudge, then Confirm.");
-            ActionRow(page, "Preview at crosshair", "Preview", () => Release250.BeginPastePreview(true), "Shows transparent blue ghosts at the look-hit. Adjust, then Confirm.");
-            SliderRow(page, "Paste height (m)", () => Release250.PasteHeightOffset, v => Release250.PasteHeightOffset = v, -20f, 40f, "Vertical offset for the active paste preview.");
-            SliderRow(page, "Paste yaw (°)", () => Release250.PasteYaw, v => Release250.PasteYaw = v, -180f, 180f, "Yaw rotation of the paste preview.");
-            SliderRow(page, "Paste nudge X (m)", () => Release250.PasteNudgeX, v => Release250.PasteNudgeX = v, -20f, 20f, "Horizontal nudge left/right in preview space.");
-            SliderRow(page, "Paste nudge Z (m)", () => Release250.PasteNudgeZ, v => Release250.PasteNudgeZ = v, -20f, 20f, "Horizontal nudge forward/back in preview space.");
+            ToggleRow(page, L.T("build.auto_paste_preview"), () => Release250.AutoPastePreview, v => Release250.AutoPastePreview = v, L.T("build.auto_paste_preview.help"));
+            ToggleRow(page, L.T("build.paste_snap_ground"), () => Release250.PasteSnapToGround, v => Release250.PasteSnapToGround = v, L.T("build.paste_snap_ground.help"));
+            ToggleRow(page, L.T("build.paste_anchor_snap"), () => Release250.PasteAnchorSnap, v => Release250.PasteAnchorSnap = v, L.T("build.paste_anchor_snap.help"));
+            ToggleRow(page, L.T("build.apply_terrain_profile"), () => Release250.ApplyTerrainProfile, v => Release250.ApplyTerrainProfile = v, L.T("build.apply_terrain_profile.help"));
+            ActionRow(page, "Preview at feet", "Preview", () => Release250.BeginPastePreview(false), L.T("build.preview_feet.help"));
+            ActionRow(page, "Preview at crosshair", "Preview", () => Release250.BeginPastePreview(true), L.T("build.preview_crosshair.help"));
+            ActionRow(page, "Lock / unlock preview", "Toggle", Release250.TogglePasteLock, L.T("build.paste_lock.help"));
+            ActionRow(page, "Confirm paste", "Commit", Release250.ConfirmPaste, L.T("build.confirm_paste.help"));
+            ActionRow(page, "Cancel preview", "Cancel", () => Release250.CancelPastePreview(), L.T("build.cancel_preview.help"));
+            string a = Release250.CornerA.HasValue ? Release250.CornerA.Value.ToString("0.#") : "unset";
+            string b = Release250.CornerB.HasValue ? Release250.CornerB.Value.ToString("0.#") : "unset";
+            string terrainNote = Release250.ClipboardTerrain != null ? "  ·  Terrain profile" : "";
+            Note(page, "A: " + a + "  ·  B: " + b + "  ·  Clipboard pieces: " + Release250.Clipboard.Count
+                + (Release250.PastePreviewActive ? (Release250.PasteLocked ? "  ·  Preview LOCKED" : "  ·  Preview ON") : "")
+                + (Release250.IncludeWorldStructures ? "  ·  World ON" : "  ·  World OFF")
+                + terrainNote);
+            Section(page, "Paste transform");
+            SliderRow(page, "Paste height (m)", () => Release250.PasteHeightOffset, v => Release250.PasteHeightOffset = v, -20f, 40f, L.T("build.paste_height.help"));
+            SliderRow(page, "Paste pitch (°)", () => Release250.PastePitch, v => Release250.PastePitch = v, -180f, 180f, L.T("build.paste_pitch.help"));
+            SliderRow(page, "Paste yaw (°)", () => Release250.PasteYaw, v => Release250.PasteYaw = v, -180f, 180f, L.T("build.paste_yaw.help"));
+            SliderRow(page, "Paste roll (°)", () => Release250.PasteRoll, v => Release250.PasteRoll = v, -180f, 180f, L.T("build.paste_roll.help"));
+            SliderRow(page, "Paste nudge X (m)", () => Release250.PasteNudgeX, v => Release250.PasteNudgeX = v, -20f, 20f, L.T("build.paste_nudge_x.help"));
+            SliderRow(page, "Paste nudge Z (m)", () => Release250.PasteNudgeZ, v => Release250.PasteNudgeZ = v, -20f, 20f, L.T("build.paste_nudge_z.help"));
+            Section(page, "Paste leveling");
             ToggleRow(page, L.T("build.paste_level"), () => Release250.PasteLevelGround, v => Release250.PasteLevelGround = v, L.T("build.paste_level.help"));
             ToggleRow(page, L.T("build.paste_per_piece"), () => Release250.PasteLevelPerPiece, v => Release250.PasteLevelPerPiece = v, L.T("build.paste_per_piece.help"));
             SliderRow(page, L.T("build.paste_feather"), () => Release250.PasteFeather, v => Release250.PasteFeather = v, 0f, 12f, L.T("build.paste_feather.help"));
-            ActionRow(page, "Confirm paste", "Commit", Release250.ConfirmPaste, "Places the clipboard at the preview position.");
-            ActionRow(page, "Cancel preview", "Cancel", () => Release250.CancelPastePreview(), "Clears the paste ghost without placing.");
-            string a = Release250.CornerA.HasValue ? Release250.CornerA.Value.ToString("0.#") : "unset";
-            string b = Release250.CornerB.HasValue ? Release250.CornerB.Value.ToString("0.#") : "unset";
-            Note(page, "A: " + a + "  ·  B: " + b + "  ·  Clipboard pieces: " + Release250.Clipboard.Count
-                + (Release250.PastePreviewActive ? "  ·  Preview ON" : "")
-                + (Release250.IncludeWorldStructures ? "  ·  World ON" : "  ·  World OFF"));
+
+            Section(page, "Free rotation");
+            ToggleRow(page, L.T("build.free_rotation"), () => FreeBuildRotation.Enabled, v => FreeBuildRotation.Enabled = v, L.T("build.free_rotation.help"));
+            ToggleRow(page, L.T("build.universal_snap"), () => PlacementSnap.UniversalSnap, v => PlacementSnap.UniversalSnap = v, L.T("build.universal_snap.help"));
+            ToggleRow(page, L.T("build.free_rotation_local"), () => FreeBuildRotation.LocalFrame, v => FreeBuildRotation.LocalFrame = v, L.T("build.free_rotation_local.help"));
+            SliderRow(page, L.T("build.rotation_divisions"), () => (float)FreeBuildRotation.SnapDivisions, v => FreeBuildRotation.SnapDivisions = Mathf.RoundToInt(v), 2f, 256f, L.T("build.rotation_divisions.help"), whole: true);
+            Note(page, L.T("build.free_rotation.note"));
+
+            Section(page, "Placement HUD");
+            ToggleRow(page, L.T("build.hud_enabled"), () => PlacementHud.Enabled, v => PlacementHud.Enabled = v, L.T("build.hud_enabled.help"));
+            ToggleRow(page, L.T("build.hud_rotation"), () => PlacementHud.ShowRotation, v => PlacementHud.ShowRotation = v, null);
+            ToggleRow(page, L.T("build.hud_axis"), () => PlacementHud.ShowAxisStep, v => PlacementHud.ShowAxisStep = v, null);
+            ToggleRow(page, L.T("build.hud_pieces"), () => PlacementHud.ShowPieceCount, v => PlacementHud.ShowPieceCount = v, null);
+            ToggleRow(page, L.T("build.hud_lock"), () => PlacementHud.ShowLockState, v => PlacementHud.ShowLockState = v, null);
+            ToggleRow(page, L.T("build.hud_ground"), () => PlacementHud.ShowGroundSnap, v => PlacementHud.ShowGroundSnap = v, null);
+            ToggleRow(page, L.T("build.hud_terrain"), () => PlacementHud.ShowInTerrain, v => PlacementHud.ShowInTerrain = v, null);
+            ToggleRow(page, L.T("build.hud_prefab"), () => PlacementHud.ShowPrefabName, v => PlacementHud.ShowPrefabName = v, null);
+
+            Section(page, "Drag build");
+            ToggleRow(page, L.T("build.drag_enabled"), () => DragBuilding.Enabled, v => DragBuilding.Enabled = v, L.T("build.drag_enabled.help"));
+            SliderRow(page, L.T("build.drag_max"), () => (float)DragBuilding.MaxPieces, v => DragBuilding.MaxPieces = Mathf.RoundToInt(v), 10f, 500f, L.T("build.drag_max.help"), whole: true);
 
             Section(page, "Saved blueprints");
-            Note(page, "Saved across worlds and characters. Export a .vbp file to share a full build (pieces included).");
+            Note(page, L.T("build.blueprints.note"));
             Field(page, "Blueprint name", blueprintName, v => blueprintName = v, "Name used when saving or renaming.", 48);
             ActionRow(page, "Current clipboard", "Save blueprint", () => BlueprintStore.SaveFromClipboard(blueprintName),
                 "Saves the current clipboard into your blueprint library.");
             SelectRow(page, "Blueprint", () => string.IsNullOrEmpty(selectedBlueprint) ? "Choose blueprint" : selectedBlueprint, BlueprintChoices);
             ActionRow(page, "Selected", "Load to clipboard", () => BlueprintStore.LoadToClipboard(selectedBlueprint),
-                "Loads the blueprint into the clipboard. Then use Paste preview or Confirm.");
+                L.T("build.load_clipboard.help"));
             ActionRow(page, "Selected", "Paste at feet", () =>
             {
-                BlueprintStore.LoadToClipboard(selectedBlueprint);
-                Release250.PasteStructure(false);
-            }, "Loads the blueprint and pastes at your feet (no preview).");
+                bool prev = Release250.AutoPastePreview;
+                Release250.AutoPastePreview = false;
+                try
+                {
+                    BlueprintStore.LoadToClipboard(selectedBlueprint);
+                    Release250.PasteStructure(false);
+                }
+                finally { Release250.AutoPastePreview = prev; }
+            }, L.T("build.paste_feet.help"));
             ActionRow(page, "Selected", "Rename", () =>
             {
                 BlueprintStore.Rename(selectedBlueprint, blueprintName);
@@ -94,10 +132,10 @@ namespace ValheimAdminMenu
             ActionRow(page, "Selected", "Export .vbp", () => BlueprintStore.Export(selectedBlueprint),
                 "Writes a shareable blueprints/<name>.vbp file with all pieces.");
             Field(page, "Import file / path", blueprintImport, v => blueprintImport = v,
-                "File name under blueprints/, or a full path to a .vbp.", 120);
-            SelectRow(page, "Export folder file", () => string.IsNullOrEmpty(blueprintImport) ? "Pick .vbp" : blueprintImport, BlueprintImportChoices);
+                L.T("build.import_path.help"), 120);
+            SelectRow(page, "Export folder file", () => string.IsNullOrEmpty(blueprintImport) ? "Pick file" : blueprintImport, BlueprintImportChoices);
             ActionRow(page, "Import into library", "Import", () => BlueprintStore.ImportFile(blueprintImport),
-                "Adds the file to your library. Same names overwrite.");
+                L.T("build.import.help"));
 
             Section(page, "Piece scale");
             SliderRow(page, "Scale", () => Release250.PieceScale, v => Release250.PieceScale = v, .25f, 4f, "Target scale for the look-at piece (0.25-4x).");

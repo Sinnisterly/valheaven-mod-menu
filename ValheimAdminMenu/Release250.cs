@@ -61,25 +61,34 @@ namespace ValheimAdminMenu
         }
         internal static Vector3 VfxCustomOffset = new Vector3(0, 1, 2);
 
-        // Paste preview (menu Confirm / Cancel).
         internal static bool PastePreviewActive;
+        internal static bool PasteLocked;
+        internal static bool AutoPastePreview = true;
+        internal static bool PasteSnapToGround = true;
+        internal static bool PasteAnchorSnap;
+        internal static bool ApplyTerrainProfile;
         internal static float PasteHeightOffset;
         internal static float PasteYaw;
+        internal static float PastePitch;
+        internal static float PasteRoll;
         internal static float PasteNudgeX;
         internal static float PasteNudgeZ;
         internal static bool PasteLevelGround;
         internal static bool PasteLevelPerPiece;
         internal static bool LevelOnPlace;
         internal static float PasteFeather = 6f;
+        internal static BlueprintTerrainDto ClipboardTerrain;
+        internal static int HudPiecesInTerrain;
 
         private static float minimapZoomValue = 1f;
         private static float originalMinZoom = -1, originalMaxZoom = -1;
         private static float lastAppliedMinimapZoom = float.NaN;
         private static float nextMinimapMaintain;
         private static bool minimapRangeExpanded;
-        private static float lastPasteH = float.NaN, lastPasteYaw, lastPasteNx, lastPasteNz;
+        private static float lastPasteH = float.NaN, lastPasteYaw, lastPastePitch, lastPasteRoll, lastPasteNx, lastPasteNz;
         private static Vector3 lastPasteOrigin;
         private static Vector3 pasteOrigin;
+        private static float nextTerrainHudSample;
         private static bool photoOwnedHud;
         private static readonly List<GameObject> PasteGhosts = new List<GameObject>();
         private static readonly Dictionary<int, Material> GhostMatCache = new Dictionary<int, Material>();
@@ -136,8 +145,15 @@ namespace ValheimAdminMenu
                 RepairAoe(player, RepairHammerRadius, silent: true);
             }
             ApplyMinimapZoom(phase);
-            if (PastePreviewActive) SyncPasteGhosts();
+            if (PastePreviewActive)
+            {
+                TickPasteAim(player);
+                SyncPasteGhosts();
+                FreeBuildRotation.TickPaste();
+            }
             else if (PasteGhosts.Count > 0) DestroyPasteGhosts();
+            FreeBuildRotation.TickHammer(player);
+            DragBuilding.Tick(player);
             TickFreecamBuild(player);
             TickFlyingMount(player);
             TickLooseMount(player);
@@ -267,6 +283,7 @@ namespace ValheimAdminMenu
                 Plugin.Instance.Report("Clipboard truncated to " + MaxClipboardPieces + " pieces (selection was larger).");
             }
             Clipboard.AddRange(collected);
+            ClipboardTerrain = null;
             string worldNote = IncludeWorldStructures
                 ? " (world structures ON, " + worldHits + " location/ruin hits)"
                 : " (player Piece-only mode)";
@@ -275,6 +292,7 @@ namespace ValheimAdminMenu
                 + bounds.size.ToString("0.#") + " volume" + worldNote + ".");
             if (Clipboard.Count >= 400)
                 Plugin.Instance.Report(L.T("ui.large_clipboard_paste_can_hitch"));
+            MaybeAutoPastePreview();
         }
 
         /// <summary>Expand A/B so overlapping structure bounds near the volume are fully enclosed.</summary>
@@ -517,14 +535,22 @@ namespace ValheimAdminMenu
 
         private static Bounds PieceWorldBounds(Piece piece) => ObjectWorldBounds(piece ? piece.gameObject : null);
 
-        /// <summary>Immediate paste (hotkey/legacy). Menu uses BeginPastePreview then ConfirmPaste.</summary>
         internal static void PasteStructure(bool atCrosshair)
         {
             Plugin.Instance.RequireWorld();
             if (Clipboard.Count == 0) throw new InvalidOperationException("Clipboard is empty. Copy a volume first.");
             var player = Plugin.Instance.RequirePlayer();
             Vector3 origin = atCrosshair ? CrosshairPoint(player) : player.transform.position;
-            CommitPasteAt(origin, 0f);
+            if (PasteSnapToGround) origin = SeatOriginOnGround(origin, Quaternion.identity);
+            CommitPasteAt(origin, Quaternion.identity);
+        }
+
+        internal static void MaybeAutoPastePreview()
+        {
+            if (!AutoPastePreview || Clipboard.Count == 0) return;
+            if (!Plugin.Instance || !ZNetScene.instance) return;
+            try { BeginPastePreview(true); }
+            catch { }
         }
 
         internal static void BeginPastePreview(bool atCrosshair)
@@ -533,15 +559,25 @@ namespace ValheimAdminMenu
             if (Clipboard.Count == 0) throw new InvalidOperationException("Clipboard is empty. Copy a volume first.");
             var player = Plugin.Instance.RequirePlayer();
             DestroyPasteGhosts();
-            pasteOrigin = atCrosshair ? CrosshairPoint(player) : player.transform.position;
-            PasteHeightOffset = 0f;
-            PasteYaw = 0f;
-            PasteNudgeX = 0f;
-            PasteNudgeZ = 0f;
+            PasteHeightOffset = PasteYaw = PastePitch = PasteRoll = 0f;
+            PasteNudgeX = PasteNudgeZ = 0f;
+            PasteLocked = false;
+            pasteOrigin = atCrosshair ? AimPasteOrigin(player) : player.transform.position;
+            if (PasteSnapToGround && !PasteAnchorSnap) pasteOrigin = SeatOriginOnGround(pasteOrigin, PasteRotation());
             PastePreviewActive = true;
             RebuildPasteGhosts();
-            Plugin.Instance.Report("Paste preview at " + (atCrosshair ? "crosshair" : "feet")
-                + ". Adjust height/yaw/nudge, then Confirm paste.");
+            Plugin.Instance.Report("Paste preview active. LMB place, P lock, RMB cancel.");
+        }
+
+        private static int pasteLockFrame = -1;
+
+        internal static void TogglePasteLock()
+        {
+            if (!PastePreviewActive) return;
+            if (pasteLockFrame == Time.frameCount) return;
+            pasteLockFrame = Time.frameCount;
+            PasteLocked = !PasteLocked;
+            if (Plugin.Instance) Plugin.Instance.Report(PasteLocked ? "Paste preview locked." : "Paste preview following aim.");
         }
 
         internal static void ConfirmPaste()
@@ -550,13 +586,17 @@ namespace ValheimAdminMenu
             if (!PastePreviewActive) throw new InvalidOperationException("No paste preview active. Start preview first.");
             if (Clipboard.Count == 0) throw new InvalidOperationException("Clipboard is empty.");
             Vector3 origin = PasteWorldOrigin();
-            float yaw = PasteYaw;
-            var pad = BuildPad(origin, yaw, PasteFeather);
+            var rot = PasteRotation();
+            var pad = BuildPad(origin, PasteYaw, PasteFeather);
             var supports = PasteLevelPerPiece ? BuildSupportPads(PasteFeather) : null;
+            var terrain = ClipboardTerrain;
+            bool applyTerrain = ApplyTerrainProfile && terrain != null;
             CancelPastePreview(silent: true);
             if (pad.HasValue)
                 Plugin.Instance.World.RememberPad(pad.Value);
-            if (PasteLevelGround)
+            if (applyTerrain)
+                Plugin.Instance.World.ApplyTerrainProfile(terrain, origin, rot);
+            else if (PasteLevelGround)
             {
                 if (supports != null && supports.Count > 0)
                 {
@@ -569,22 +609,183 @@ namespace ValheimAdminMenu
                     Plugin.Instance.World.ApplyPad(pad.Value);
                 }
             }
-            CommitPasteAt(origin, yaw);
+            CommitPasteAt(origin, rot);
         }
 
         internal static void CancelPastePreview(bool silent = false)
         {
             DestroyPasteGhosts();
             PastePreviewActive = false;
-            PasteHeightOffset = PasteYaw = PasteNudgeX = PasteNudgeZ = 0f;
+            PasteLocked = false;
+            PasteHeightOffset = PasteYaw = PastePitch = PasteRoll = PasteNudgeX = PasteNudgeZ = 0f;
             lastPasteH = float.NaN;
+            HudPiecesInTerrain = 0;
             if (!silent && Plugin.Instance) Plugin.Instance.Report(L.T("ui.paste_preview_cancelled"));
         }
 
+        internal static Quaternion PasteRotation() => Quaternion.Euler(PastePitch, PasteYaw, PasteRoll);
+
         internal static Vector3 PasteWorldOrigin()
         {
-            var yaw = Quaternion.Euler(0f, PasteYaw, 0f);
-            return pasteOrigin + Vector3.up * PasteHeightOffset + yaw * new Vector3(PasteNudgeX, 0f, PasteNudgeZ);
+            var rot = PasteRotation();
+            return pasteOrigin + Vector3.up * PasteHeightOffset + rot * new Vector3(PasteNudgeX, 0f, PasteNudgeZ);
+        }
+
+        private static void TickPasteAim(Player player)
+        {
+            if (!PastePreviewActive) return;
+            if (Plugin.Instance != null && Plugin.Instance.Open) return;
+            if (Console.IsVisible() || ChatHasFocus() || TextInput.IsVisible() || StoreGui.IsVisible() || InventoryGui.IsVisible() || Menu.IsVisible() || Minimap.IsOpen())
+                return;
+
+            if (Input.GetKeyDown(PasteLockHotkey()))
+                TogglePasteLock();
+
+            if (!PasteLocked)
+            {
+                pasteOrigin = AimPasteOrigin(player);
+                if (PasteSnapToGround && !PasteAnchorSnap)
+                    pasteOrigin = SeatOriginOnGround(pasteOrigin, PasteRotation());
+            }
+
+            if (Time.unscaledTime >= nextTerrainHudSample)
+            {
+                nextTerrainHudSample = Time.unscaledTime + 0.35f;
+                HudPiecesInTerrain = CountPiecesInTerrain();
+            }
+
+            if (!ZInput.GetButtonDown("Attack") && !Input.GetMouseButtonDown(0)) return;
+            try { ConfirmPaste(); }
+            catch (Exception ex)
+            {
+                if (Plugin.Instance) Plugin.Instance.Report(ex.GetBaseException().Message);
+            }
+        }
+
+        private static bool ChatHasFocus()
+        {
+            try { return Chat.instance && Chat.instance.HasFocus(); }
+            catch { return false; }
+        }
+
+        private static KeyCode PasteLockHotkey()
+        {
+            try
+            {
+                var feature = HotkeyRegistry.Find("pasteLockPreview");
+                if (feature != null && feature.Key != KeyCode.None && Rules.ValidHotkey(feature.Key))
+                    return feature.Key;
+            }
+            catch { }
+            return KeyCode.P;
+        }
+
+        private static Vector3 AimPasteOrigin(Player player)
+        {
+            if (PasteAnchorSnap && TryAnchorSnapOrigin(player, out Vector3 snapped))
+                return snapped;
+            return CrosshairPoint(player);
+        }
+
+        private static Vector3 SeatOriginOnGround(Vector3 origin, Quaternion rot)
+        {
+            float lowest = float.MaxValue;
+            bool any = false;
+            for (int i = 0; i < Clipboard.Count; i++)
+            {
+                Vector3 world = origin + rot * Clipboard[i].LocalPos;
+                if (world.y < lowest) lowest = world.y;
+                any = true;
+            }
+            if (!any) lowest = origin.y;
+            float ground = SampleGroundY(origin);
+            float delta = ground - lowest;
+            if (Mathf.Abs(delta) < 0.001f) return origin;
+            return origin + Vector3.up * delta;
+        }
+
+        private static float SampleGroundY(Vector3 pos)
+        {
+            try
+            {
+                if (ZoneSystem.instance)
+                {
+                    float h = ZoneSystem.instance.GetGroundHeight(pos);
+                    if (!float.IsNaN(h) && !float.IsInfinity(h)) return h;
+                }
+            }
+            catch { }
+            if (Physics.Raycast(pos + Vector3.up * 80f, Vector3.down, out var hit, 200f,
+                LayerMask.GetMask("terrain", "Default", "static_solid"), QueryTriggerInteraction.Ignore))
+                return hit.point.y;
+            return pos.y;
+        }
+
+        private static bool TryAnchorSnapOrigin(Player player, out Vector3 origin)
+        {
+            origin = default;
+            if (!TryGetLookPiece(player, out var worldPiece, out _)) return false;
+            var worldSnaps = new List<Transform>();
+            try { worldPiece.GetSnapPoints(worldSnaps); } catch { return false; }
+            if (worldSnaps.Count == 0) return false;
+
+            var rot = PasteRotation();
+            float best = float.MaxValue;
+            Vector3 bestOrigin = CrosshairPoint(player);
+            Vector3 hit = CrosshairPoint(player);
+
+            for (int w = 0; w < worldSnaps.Count; w++)
+            {
+                var wt = worldSnaps[w];
+                if (!wt) continue;
+                float distHit = (wt.position - hit).sqrMagnitude;
+                if (distHit > 25f) continue;
+
+                int limit = Mathf.Min(Clipboard.Count, 48);
+                for (int i = 0; i < limit; i++)
+                {
+                    var entry = Clipboard[i];
+                    var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(entry.Prefab) : null;
+                    if (!prefab) continue;
+                    var piece = prefab.GetComponent<Piece>();
+                    if (!piece) continue;
+                    var localSnaps = new List<Transform>();
+                    try { piece.GetSnapPoints(localSnaps); } catch { continue; }
+                    for (int s = 0; s < localSnaps.Count; s++)
+                    {
+                        var st = localSnaps[s];
+                        if (!st) continue;
+                        Vector3 localSnap = st.position - prefab.transform.position;
+                        Vector3 candidate = wt.position - rot * (entry.LocalPos + localSnap);
+                        float score = (candidate - hit).sqrMagnitude;
+                        if (score < best)
+                        {
+                            best = score;
+                            bestOrigin = candidate;
+                        }
+                    }
+                }
+            }
+            if (best >= float.MaxValue * 0.5f) return false;
+            origin = bestOrigin;
+            return true;
+        }
+
+        private static int CountPiecesInTerrain()
+        {
+            if (!PastePreviewActive || Clipboard.Count == 0) return 0;
+            Vector3 origin = PasteWorldOrigin();
+            var rot = PasteRotation();
+            int n = 0;
+            int step = Clipboard.Count > 400 ? 4 : 1;
+            for (int i = 0; i < Clipboard.Count; i += step)
+            {
+                Vector3 world = origin + rot * Clipboard[i].LocalPos;
+                float ground = SampleGroundY(world);
+                if (world.y < ground - 0.15f) n++;
+            }
+            if (step > 1) n = Mathf.RoundToInt(n * (float)step);
+            return Mathf.Min(n, Clipboard.Count);
         }
 
         private static void SyncPasteGhosts()
@@ -605,6 +806,8 @@ namespace ValheimAdminMenu
             bool dirty = float.IsNaN(lastPasteH)
                 || Mathf.Abs(lastPasteH - PasteHeightOffset) > .001f
                 || Mathf.Abs(lastPasteYaw - PasteYaw) > .01f
+                || Mathf.Abs(lastPastePitch - PastePitch) > .01f
+                || Mathf.Abs(lastPasteRoll - PasteRoll) > .01f
                 || Mathf.Abs(lastPasteNx - PasteNudgeX) > .001f
                 || Mathf.Abs(lastPasteNz - PasteNudgeZ) > .001f
                 || (origin - lastPasteOrigin).sqrMagnitude > .0001f;
@@ -617,6 +820,8 @@ namespace ValheimAdminMenu
         {
             lastPasteH = PasteHeightOffset;
             lastPasteYaw = PasteYaw;
+            lastPastePitch = PastePitch;
+            lastPasteRoll = PasteRoll;
             lastPasteNx = PasteNudgeX;
             lastPasteNz = PasteNudgeZ;
             lastPasteOrigin = PasteWorldOrigin();
@@ -631,13 +836,13 @@ namespace ValheimAdminMenu
             try
             {
                 Vector3 origin = PasteWorldOrigin();
-                var yaw = Quaternion.Euler(0f, PasteYaw, 0f);
+                var rot = PasteRotation();
                 foreach (var entry in Clipboard)
                 {
                     var prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
                     if (!prefab) { PasteGhosts.Add(null); continue; }
-                    Vector3 worldPos = origin + yaw * entry.LocalPos;
-                    Quaternion worldRot = yaw * entry.LocalRot;
+                    Vector3 worldPos = origin + rot * entry.LocalPos;
+                    Quaternion worldRot = rot * entry.LocalRot;
                     var ghost = Object.Instantiate(prefab, worldPos, worldRot);
                     ghost.name = "ValheavenPasteGhost_" + entry.Prefab;
                     ghost.transform.localScale = entry.Scale;
@@ -651,14 +856,14 @@ namespace ValheimAdminMenu
         private static void UpdatePasteGhostTransforms()
         {
             Vector3 origin = PasteWorldOrigin();
-            var yaw = Quaternion.Euler(0f, PasteYaw, 0f);
+            var rot = PasteRotation();
             for (int i = 0; i < Clipboard.Count && i < PasteGhosts.Count; i++)
             {
                 var ghost = PasteGhosts[i];
                 if (!ghost) continue;
                 var entry = Clipboard[i];
-                ghost.transform.position = origin + yaw * entry.LocalPos;
-                ghost.transform.rotation = yaw * entry.LocalRot;
+                ghost.transform.position = origin + rot * entry.LocalPos;
+                ghost.transform.rotation = rot * entry.LocalRot;
                 ghost.transform.localScale = entry.Scale;
             }
         }
@@ -879,8 +1084,7 @@ namespace ValheimAdminMenu
             return true;
         }
 
-        /// <summary>Paste like vanilla PlacePiece: Instantiate makes the ZDO; claim ownership, SetCreator, OnPlaced. Ghosts use m_forceDisableInit.</summary>
-        private static void CommitPasteAt(Vector3 origin, float yawDegrees)
+        private static void CommitPasteAt(Vector3 origin, Quaternion rot)
         {
             var player = Plugin.Instance.RequirePlayer();
             long playerId = player.GetPlayerID();
@@ -889,15 +1093,14 @@ namespace ValheimAdminMenu
             string profileName = "";
             try { profileName = Game.instance?.GetPlayerProfile()?.GetName() ?? ""; } catch { }
 
-            var yaw = Quaternion.Euler(0f, yawDegrees, 0f);
             int n = 0, skipped = 0;
             var placedScratch = new List<IPlaced>(4);
             foreach (var entry in Clipboard)
             {
                 var prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
                 if (!prefab) { skipped++; continue; }
-                Vector3 worldPos = origin + yaw * entry.LocalPos;
-                Quaternion worldRot = yaw * entry.LocalRot;
+                Vector3 worldPos = origin + rot * entry.LocalPos;
+                Quaternion worldRot = rot * entry.LocalRot;
 
                 // Same as PlacePiece: Instantiate of a ZNetView prefab creates the ZDO.
                 TerrainModifier.SetTriggerOnPlaced(true);

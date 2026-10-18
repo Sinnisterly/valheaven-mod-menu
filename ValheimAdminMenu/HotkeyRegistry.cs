@@ -95,6 +95,12 @@ namespace ValheimAdminMenu
             Action("copyCornerB", "hotkey.copyCornerB", () => Safe(Release250.SetCornerB));
             Action("copyVolume", "hotkey.copyVolume", () => Safe(Release250.CopyStructureVolume));
             Action("pasteStructure", "hotkey.pasteStructure", () => Safe(() => Release250.PasteStructure(false)));
+            Action("pastePreview", "hotkey.pastePreview", () => Safe(() => Release250.BeginPastePreview(true)));
+            Action("pasteLockPreview", "hotkey.pasteLockPreview", () => Safe(Release250.TogglePasteLock));
+            features[features.Count - 1].Key = KeyCode.P;
+            Action("pasteConfirm", "hotkey.pasteConfirm", () => Safe(Release250.ConfirmPaste));
+            Toggle("freeBuildRotation", "hotkey.freeBuildRotation", () => FreeBuildRotation.Enabled, v => FreeBuildRotation.Enabled = v);
+            Toggle("pasteAnchorSnap", "hotkey.pasteAnchorSnap", () => Release250.PasteAnchorSnap, v => Release250.PasteAnchorSnap = v);
             Action("clearVfx", "hotkey.clearVfx", () => Safe(() => VfxSuite.ClearAll(true)));
             Action("forceGrow", "hotkey.forceGrow", () => Safe(Release250.GrowNearbyPlants));
         }
@@ -148,15 +154,28 @@ namespace ValheimAdminMenu
             Ensure();
             foreach (var f in features) f.Key = KeyCode.None;
             boundCount = 0;
-            if (binds == null) return;
-            foreach (var bind in binds)
+            if (binds != null)
             {
-                if (bind == null || string.IsNullOrEmpty(bind.id)) continue;
-                var feature = Find(bind.id);
-                if (feature == null) continue;
-                var key = (KeyCode)bind.key;
-                if (!Rules.ValidHotkey(key)) continue;
-                feature.Key = key;
+                foreach (var bind in binds)
+                {
+                    if (bind == null || string.IsNullOrEmpty(bind.id)) continue;
+                    var feature = Find(bind.id);
+                    if (feature == null) continue;
+                    var key = (KeyCode)bind.key;
+                    if (!Rules.ValidHotkey(key)) continue;
+                    feature.Key = key;
+                    boundCount++;
+                }
+            }
+            ApplyBuiltInDefaults();
+        }
+
+        private static void ApplyBuiltInDefaults()
+        {
+            var lockPreview = Find("pasteLockPreview");
+            if (lockPreview != null && lockPreview.Key == KeyCode.None)
+            {
+                lockPreview.Key = KeyCode.P;
                 boundCount++;
             }
         }
