@@ -6,10 +6,14 @@ Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe`
 - **Game:** Valheim 1.0.7+ (checked through 1.0.20)
 - **Open menu:** F8 (rebindable in Settings)
 
+## Support me on Ko-Fi if you want!
+- https://ko-fi.com/loathed
+- Any donation is appreciated, but none are needed; I was asked to add this by users, that is all.
+
 ### Changelog (3.0.0+)
 - **3.0.4:** God mode / flight keep working when other mods overwrite vanilla debug flags (re-assert + local fly fallback only if needed). Settings → Interface → Section layout: Dropdowns (default) or Full list.
 - **3.0.3:** Craft-from-chests no longer hitch when opening the crafting menu (cache nearby chest stacks; stop ClaimOwnership spam on every recipe check).
-- **3.0.2:** Hardened related 3.0 features — free-rotation / universal snap / drag only on build hammer (not hoe/cultivator); paste/drag/freecam-build/mount float state clears on portal/death; mount AI gravity restored on detach.
+- **3.0.2:** Hardened related 3.0 features - free-rotation / universal snap / drag only on build hammer (not hoe/cultivator); paste/drag/freecam-build/mount float state clears on portal/death; mount AI gravity restored on detach.
 - **3.0.1:** Drag-build no longer blocks hammer/hoe/cultivator placement (off by default; click places, hold to drag walls/floors/beams/roofs). Freecam-build / portal leftover no-gravity “falling slide” cleared.
 - **DX11 menu not showing (Vulkan OK):** stop auto-closing on focus loss (Exclusive Fullscreen blips when unlocking the cursor). Bootstrap failures now log + retry; menu canvas/show path is more resilient. Ready line logs GFX + fullscreen mode.
 
