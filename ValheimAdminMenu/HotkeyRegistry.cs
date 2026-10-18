@@ -46,13 +46,13 @@ namespace ValheimAdminMenu
             built = true;
 
             Toggle("god", "hotkey.god",
-                () => Player.m_localPlayer && Player.m_localPlayer.InGodMode(),
+                () => app.Features.WantGod || (Player.m_localPlayer && Player.m_localPlayer.InGodMode()),
                 v => Safe(() => app.Features.God(v)));
             Toggle("ghost", "hotkey.ghost",
                 () => Player.m_localPlayer && Player.m_localPlayer.InGhostMode(),
                 v => Safe(() => app.Features.Ghost(v)));
             Toggle("fly", "hotkey.fly",
-                () => Player.m_localPlayer && Player.m_localPlayer.IsDebugFlying(),
+                () => app.Features.WantFly || (Player.m_localPlayer && Player.m_localPlayer.IsDebugFlying()),
                 v => Safe(() => app.Features.Fly(v)));
             Toggle("noclip", "hotkey.noclip", () => app.Phase.Noclip, v => app.Phase.Noclip = v);
             Toggle("stamina", "hotkey.stamina", () => app.Features.Stamina, v => app.Features.Stamina = v);

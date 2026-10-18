@@ -113,7 +113,7 @@ namespace ValheimAdminMenu
             {
                 case 0:
                     Section(page,"Damage & defense");
-                    ToggleRow(page,"God mode",()=>Player.m_localPlayer && Player.m_localPlayer.InGodMode(),v=>Run(()=>f.God(v)),"Blocks all damage and keeps health full while enabled.");
+                    ToggleRow(page,"God mode",()=>f.WantGod || (Player.m_localPlayer && Player.m_localPlayer.InGodMode()),v=>Run(()=>f.God(v)),"Blocks all damage and keeps health full while enabled. Re-applies if another mod clears the vanilla flag.");
                     ToggleRow(page,"One-hit creatures",()=>p.OneHitKill||p.OneHitCreatures,v=>{p.OneHitCreatures=v;p.OneHitKill=v;},"Your attacks defeat creatures in one hit. Separate from structures.");
                     ToggleRow(page,"One-hit structures",()=>p.OneHitStructures,v=>p.OneHitStructures=v,"Your hits destroy buildings and other structures in one hit. Separate from creatures.");
                     SliderRow(page,"Outgoing damage",()=>p.OutgoingDamageMult,v=>p.OutgoingDamageMult=v,0,20,"Multiplies damage you deal. 1 is vanilla. Stacks with One-hit kill (one-hit still wins).");
@@ -221,7 +221,7 @@ namespace ValheimAdminMenu
                     break;
                 case 3:
                     Section(page,"Movement");
-                    ToggleRow(page,"Flight",()=>Player.m_localPlayer && Player.m_localPlayer.IsDebugFlying(),v=>Run(()=>f.Fly(v)),"Fly with movement keys. Jump rises; crouch descends.");
+                    ToggleRow(page,"Flight",()=>f.WantFly || (Player.m_localPlayer && Player.m_localPlayer.IsDebugFlying()),v=>Run(()=>f.Fly(v)),"Fly with movement keys. Jump rises; crouch descends. Falls back to local fly if another mod blocks debug fly.");
                     ToggleRow(page,"Noclip",()=>p.Noclip,v=>p.Noclip=v,"Pass through colliders (same toggle as Survival). Pair with Flight to move through the world freely.");
                     ToggleRow(page,"Super jump",()=>e.SuperJump,v=>e.SuperJump=v,"Increases jump strength. Works with infinite jumps.");
                     SliderRow(page,"Jump strength",()=>d.jumpMultiplier,v=>d.jumpMultiplier=v,1,8,"Multiplier applied to jump force.");
@@ -721,6 +721,11 @@ namespace ValheimAdminMenu
             Note(page,L.T("settings.language.note"));
             if (LocaleCodes.UsesCyrillic(MenuLanguage.EffectiveCode))
                 Note(page,L.T("settings.language.font_preview"));
+            SelectRow(page,L.T("settings.menu_layout"),()=>d.menuSectionFolds?L.T("settings.menu_layout.folds"):L.T("settings.menu_layout.full"),()=>new[]{
+                Choice(L.T("settings.menu_layout.folds"),()=>{d.menuSectionFolds=true;rebuild=true;}),
+                Choice(L.T("settings.menu_layout.full"),()=>{d.menuSectionFolds=false;rebuild=true;})
+            });
+            Note(page,L.T("settings.menu_layout.help"));
             SliderRow(page,L.T("settings.menu_scale"),()=>app.UiScale,v=>app.UiScale=v,.7f,1.6f,L.T("settings.menu_scale.help"));
             ToggleRow(page,L.T("settings.tooltips"),()=>d.tooltips,v=>{d.tooltips=v;ClearHover();},L.T("settings.tooltips.help"));
             ToggleRow(page,L.T("settings.block_inputs"),()=>d.blockGameInputs,v=>d.blockGameInputs=v,L.T("settings.block_inputs.help"));

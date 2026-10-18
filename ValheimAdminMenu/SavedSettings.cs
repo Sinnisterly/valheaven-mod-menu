@@ -7,7 +7,7 @@ namespace ValheimAdminMenu
     [Serializable]
     internal sealed class SettingsData
     {
-        public int version = 9, hotkey = (int)KeyCode.F8, espFont = 11, espMax = 70;
+        public int version = 10, hotkey = (int)KeyCode.F8, espFont = 11, espMax = 70;
         public string language = LocaleCodes.Auto;
         public SpawnPreset[] spawnPresets = new SpawnPreset[0];
         public EspFilter[] espFilters = new EspFilter[0];
@@ -20,6 +20,8 @@ namespace ValheimAdminMenu
         public bool alwaysDay,fastTraining,superJump,infiniteDurability,instantHarvest;
         public float jumpMultiplier=2, skillXpMult=1;
         public bool autoSave = true, rememberPlayer, tooltips = true, blockGameInputs = true;
+        /// <summary>True = collapsible section dropdowns; false = flat full list.</summary>
+        public bool menuSectionFolds = true;
         public float scale = 1, windowX = -1, windowY = -1;
         public bool esp, autoPin, espDistance = true, espBackground, espOutline = true, espAvoidOverlap = true, espHideInMenu = true, espContainerCount = true, espContainerItems;
         public int espContainerLines = 64;
@@ -225,6 +227,12 @@ namespace ValheimAdminMenu
                 // 3.0.0 drag-build default broke normal place; force off once for existing sidecars.
                 loaded.dragBuilding = false;
                 loaded.version = 9;
+            }
+            if (loaded.version < 10)
+            {
+                // JsonUtility defaults missing bools to false; keep dropdowns as the default layout.
+                loaded.menuSectionFolds = true;
+                loaded.version = 10;
             }
             loaded.featureBinds = UnpackBinds(loaded);
             loaded.espFilters = UnpackFilters(loaded);
@@ -437,7 +445,11 @@ namespace ValheimAdminMenu
             if (Player.m_localPlayer)
             {
                 var p = Player.m_localPlayer;
-                Data.god = p.InGodMode(); Data.ghost = p.InGhostMode(); Data.fly = p.IsDebugFlying(); Data.noCost = p.PlacementCostDisabled;
+                var feat = app.Features;
+                Data.god = feat.WantGod || p.InGodMode();
+                Data.ghost = p.InGhostMode();
+                Data.fly = feat.WantFly || p.IsDebugFlying();
+                Data.noCost = p.PlacementCostDisabled;
             }
             }
             Data.pasteLevelGround=Release250.PasteLevelGround;Data.pasteLevelPerPiece=Release250.PasteLevelPerPiece;Data.levelOnPlace=Release250.LevelOnPlace;Data.pasteFeather=Release250.PasteFeather;

@@ -201,12 +201,35 @@ namespace ValheimAdminMenu
             return body;
         }
 
+        private bool SectionFolds => app?.Settings?.Data == null || app.Settings.Data.menuSectionFolds;
+
         private void Section(Transform parent, string text, bool? defaultOpen = null)
         {
+            if (!SectionFolds)
+            {
+                FlatSection(parent, text);
+                return;
+            }
             bool open = defaultOpen ?? (foldSeq == 0);
             foldSeq++;
             foldPage = parent;
             foldBody = Fold(parent, text, open);
+        }
+
+        private void FlatSection(Transform parent, string text)
+        {
+            foldSeq++;
+            foldPage = parent;
+            foldBody = parent;
+            string shown = L.TValue(text);
+            float headH = SettingsDense ? 28 : 34;
+            var header = Box(parent, "Section " + shown, new Color(.12f, .11f, .09f, 1f), true);
+            Fixed(header, headH);
+            Border(header, GoldDim);
+            var title = Label(header, shown.ToUpperInvariant(), 13, Gold, localize: false);
+            title.characterSpacing = 1.2f;
+            Stretch(title.rectTransform, 10, SettingsDense ? 4 : 6, 8, SettingsDense ? 4 : 6);
+            ChromeCaption(title);
         }
 
         private void Note(Transform parent,string text)
