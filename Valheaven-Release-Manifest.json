@@ -1,0 +1,12 @@
+{
+  "version": "2.1.0",
+  "game": "1.0.7",
+  "offline_checks": 94,
+  "engine_checks": 35,
+  "world_loaded_during_tests": false,
+  "files": {
+    "ValheavenModMenu.dll": "8bc9cdb3958e7a4b9cdb7ce3ed3d22a9736c8067003429e15ea0933ecdbb3f9d",
+    "Valheaven-2.1.0.zip": "f91f4613625a0733997cdf97f8dcf804f487620cbf0b29c53f4399d0538ae5ea",
+    "Valheaven-2.1.0-source.zip": "b5c8456510b7db0fef6489fddef79edbcbd01370dfff5856e76c95dca8c058f0"
+  }
+}

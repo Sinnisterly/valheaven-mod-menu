@@ -1,0 +1,989 @@
+[
+  {
+    "Name": "assembly_googleanalytics.dll",
+    "Bytes": 31744,
+    "SHA256": "516D1DABA56AE51E6486846C8D2FCE3DB9CD393FB201A8C9151EF64CFE8314E5",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_guiutils.dll",
+    "Bytes": 37376,
+    "SHA256": "96376C4E4864D54D09034BDE3B00FD4ED095D75BAB5EC65A5D6440C61D143463",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_lux.dll",
+    "Bytes": 10752,
+    "SHA256": "070D537AD1ADDB6F088F273D9E64578CB0A58325B8BF7CBC98D9BAA967CC619D",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_postprocessing.dll",
+    "Bytes": 95232,
+    "SHA256": "67F6A99278A629261D07145826831364905CC4A8DAED610617C4B9BCE0A4FB48",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_simplemeshcombine.dll",
+    "Bytes": 8704,
+    "SHA256": "1DC8A7A074DC58DEB306EF7C65335FD6CB0C3233418E543B575EE620860ABE40",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_sunshafts.dll",
+    "Bytes": 81408,
+    "SHA256": "22ED6D407FC8BACD043115A85F5D71485CA18A63FE5CD32B3CB1ED8C973E625E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_utils.dll",
+    "Bytes": 241664,
+    "SHA256": "9333361C9D2A2A941C1E6D47E76220689FED1761DE8B5D123F7F42F26BE3132A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "assembly_valheim.dll",
+    "Bytes": 2566144,
+    "SHA256": "A5130F5A957AB51CB6538F5412CBE57B43F927F4A679918BFF199B5C905D01BC",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Assembly-CSharp.dll",
+    "Bytes": 23552,
+    "SHA256": "24AA95DB1B2615EE7746F3218E2E9155AE43257BC38099D91E08E51B8CDA9270",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Autodesk.Fbx.BuildTestAssets.dll",
+    "Bytes": 4608,
+    "SHA256": "CDB5DA86C182E76A79CC2191D84EBF9AB41B785FB6FEE7CE7648E906936F0539",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Autodesk.Fbx.dll",
+    "Bytes": 4096,
+    "SHA256": "5A47942598886962553D226FFCDF6AE4BFB771666FE4C4FBBCC5D343F1A23E7C",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "com.rlabrecque.steamworks.net.dll",
+    "Bytes": 406528,
+    "SHA256": "CF7B3E551D6DF3E19388D845C17E40238B41F89DB6E39618DAB63D9C92473DCD",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "com.unity.switch2.graphicsscalingkit.dll",
+    "Bytes": 5120,
+    "SHA256": "39D7F1DC391B11325E09777F82759675FCD69DFBC9BBE36F9402DBECE67A97A4",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "gui_framework.dll",
+    "Bytes": 17920,
+    "SHA256": "A31C37EC75F21C967C74CA2D7B806FA6315E3D8300A21AA3FDA30EDE04463226",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "MagicaClothV2.dll",
+    "Bytes": 454656,
+    "SHA256": "5400B1E80964D929EE99CF64E65DBC6DC533BE4E085605C7C62A31E5008A834E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Mono.Security.dll",
+    "Bytes": 241152,
+    "SHA256": "4B6569566E48FA584DDE7B4F2FAA4C3CC0321599942E0898BA1B06838AEF7108",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "mscorlib.dll",
+    "Bytes": 4632064,
+    "SHA256": "5ED1180FC8CB409D57952296C7F573F2B1B3D3D2A2CD37258EF407498A17DD4D",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "netstandard.dll",
+    "Bytes": 90112,
+    "SHA256": "6AE62E082DC494A2433984177F60CA4DB5FAE69B1F360A8B33754172B310B8C5",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Newtonsoft.Json.dll",
+    "Bytes": 691712,
+    "SHA256": "A56146202232958F46BD6A28B5A7DA166AEA123EE0D646735A46E5C341DFBF1F",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "PlayFab.dll",
+    "Bytes": 1127424,
+    "SHA256": "4D3576FCFC4F4AA1D40FA19DD1884D69E0E4A35C936F525485326A6B8368339F",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "PlayFabParty.dll",
+    "Bytes": 180736,
+    "SHA256": "99E378CC13209A1E79CE7A81FAACAF8430F2094C352FFDBC5ADC7FC1CB801306",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "SingularityGroup.HotReload.Runtime.Public.dll",
+    "Bytes": 6656,
+    "SHA256": "80240BE4D02A3D908E9210564C48AE75FAF5A03188FC43FCC16C987F8DCFB7B1",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "SoftReferenceableAssets.dll",
+    "Bytes": 43008,
+    "SHA256": "0C529A84C1AB011AEFA43A75231B9412FC6A532D22752C3F0D4934926691E810",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Splatform.dll",
+    "Bytes": 53248,
+    "SHA256": "AB1753F05F5FAE8C8614B729DE852C3282C5F174EB6E672F76480579B1F41DCE",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Splatform.Steam.dll",
+    "Bytes": 29184,
+    "SHA256": "D8DBB99D17530DAC949E4396EE67C751DA29307A2595C7177337CBDA66611554",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.ComponentModel.Composition.dll",
+    "Bytes": 257024,
+    "SHA256": "0076148507A91AE4839320D6AFB549EEC928596B72DCD95EA6C5ECF73F8C65F2",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Configuration.dll",
+    "Bytes": 124928,
+    "SHA256": "69686FE46898D9C0077ADB973527F3F5EB9C4840FA2F8D90A860B2F5C1E03FA1",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Core.dll",
+    "Bytes": 1113088,
+    "SHA256": "9493EBE16569F6067BEEF5281D68E83EE9511DB7F55245B1DC2C95E8E189FCE3",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Data.DataSetExtensions.dll",
+    "Bytes": 29696,
+    "SHA256": "1356D8889A0EDD5A658F2F942638EBF33269E68C4F72F2775741B821A6C6520B",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Data.dll",
+    "Bytes": 2125312,
+    "SHA256": "6081CA5F31ADB626455939A12D2F99FBA9E963BC05E9ACAA1F7921C0D84784BB",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.dll",
+    "Bytes": 2641920,
+    "SHA256": "439CA04B265472AFE66DF7802BED26E880B3DB35E33C7E0ECF182611F4B9B6D7",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Drawing.dll",
+    "Bytes": 489984,
+    "SHA256": "5218327941712BDEBE787E33FE2200A859E4409BECB4FB46E6451CECE5D2E8E1",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.EnterpriseServices.dll",
+    "Bytes": 44544,
+    "SHA256": "230BC9BF6611383AA9B3964CA70B1FE72B3662E213331C123265C8C83B5D03D6",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.IO.Compression.dll",
+    "Bytes": 114688,
+    "SHA256": "39838D5AE350265398321E656EB0B396A67113E278D05D79B2D86E7326A0F196",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.IO.Compression.FileSystem.dll",
+    "Bytes": 18432,
+    "SHA256": "BFAE12D50F244DDA8B9715594BB85BE351C63326ADCC27DAD4F4A6B188D83CBF",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.IO.Hashing.dll",
+    "Bytes": 50488,
+    "SHA256": "AC7AC3E83805B0B621C48B90543DC733C9A89106835278618357D6187E3DA74E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Memory.dll",
+    "Bytes": 4608,
+    "SHA256": "C4F030A2CBA7DA7CDCF493257C24560E203D355904AEE490D645A935842F834A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Net.Http.dll",
+    "Bytes": 122880,
+    "SHA256": "3677239BD08808DA011F94A7C41371BAAC10BEFA6423098C187471B236D2DB38",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Numerics.dll",
+    "Bytes": 119296,
+    "SHA256": "9B6D5A2D166165A7F1EDFEA05B4AAE4F979F7672F6D50D75CCF8586098EA4DE6",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Runtime.CompilerServices.Unsafe.dll",
+    "Bytes": 18024,
+    "SHA256": "01748200F2400C742AA689F1F5101BD6298EFDFD92C00C18F4FA473847235BA9",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Runtime.dll",
+    "Bytes": 12288,
+    "SHA256": "E0A7334B7BA419AAAB6BD3BB6992D693E689341A9178172C9BF99C2AA6A085BD",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Runtime.Serialization.dll",
+    "Bytes": 934400,
+    "SHA256": "783E6193DB3D0E6F137587C5A7FD8D2F4076B8307CD1C481EEAB93ED57A81000",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Security.dll",
+    "Bytes": 320000,
+    "SHA256": "81FFC9FA9B17422A9EF25FE7BCCCCD154EE277F459A3C62AA67EAD0A4FECA16D",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.ServiceModel.Internals.dll",
+    "Bytes": 215040,
+    "SHA256": "289D5CB6D75B81A2C38643A0305F12C908D8C78FFEF9F2845F0B22B30DC45A92",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Transactions.dll",
+    "Bytes": 35328,
+    "SHA256": "1C86DDF61FDF72BD8942F8AC12226B134D4E10EC88D66EF2F31CCBB65B149ACA",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Xml.dll",
+    "Bytes": 3160064,
+    "SHA256": "F8D4A2AF788E679811171031B79F4AC5204E00526EFA0F0F3507984C3EE96D0A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "System.Xml.Linq.dll",
+    "Bytes": 136704,
+    "SHA256": "181938ADE3495F679DB26FC767585BBD84B10F664D47EF1E3422D667F4954370",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.AI.Navigation.dll",
+    "Bytes": 24576,
+    "SHA256": "7B4A7999321C828279AAFAB143349A377B4A3B9C2AEC2647691A0F224250B35E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Burst.dll",
+    "Bytes": 304640,
+    "SHA256": "136BC1D7814BCC0BCF660BAF4FD9F1EF012B47D4DC233CA230B52AD4F5D55468",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Burst.Unsafe.dll",
+    "Bytes": 5632,
+    "SHA256": "9D9C1FF52411DECBEE5D9F0D1CD61EBEAA222077AA77A52101EA3DEBAFAE98E2",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Collections.dll",
+    "Bytes": 453632,
+    "SHA256": "5DE2A46B8B7D83C09E777ED73AB56C2BCA78866F356E85FD052E31F2FA0260A0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Collections.LowLevel.ILSupport.dll",
+    "Bytes": 5120,
+    "SHA256": "FF50383F807F9692E4913B97E47D86FEFCB8FAA33D6D48CD3E3FD6FC7FFB448D",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Formats.Fbx.Runtime.dll",
+    "Bytes": 6656,
+    "SHA256": "870C6065ACFA313F1FEC485F798A65D3C9AB28286D1CFDD23013D5B147AEBE74",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.InputSystem.dll",
+    "Bytes": 1137152,
+    "SHA256": "97E3F420DFD0025EC8537054132C141870BD23B613E6992F3D5DFDD146FDBBA2",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.InputSystem.ForUI.dll",
+    "Bytes": 16384,
+    "SHA256": "F6A73EA65711E4DE6C3B65DC42654882E75A8F81BD465BBAF7D925C69647729A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Mathematics.dll",
+    "Bytes": 752640,
+    "SHA256": "63473793DEBB38805E5E5DA3B8927056F4B71B4D0CC4A63ACA777599306ED5BD",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.MemoryProfiler.dll",
+    "Bytes": 7168,
+    "SHA256": "15899AF9CEFEC08B90F4CE2068D5D002EAA141077DA902D9117EE62F8CD0864C",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Profiling.Core.dll",
+    "Bytes": 10240,
+    "SHA256": "DA88181492400ABAFEFACFDF3F3CC6051BB4EA04435A85D2805A3569D4325D3F",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.ScriptableBuildPipeline.dll",
+    "Bytes": 9216,
+    "SHA256": "AE66800859762CF5CC251DBB2CBAD6404E8A5A7C2FDC80D15B8CD90FAD883521",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.TextMeshPro.dll",
+    "Bytes": 445952,
+    "SHA256": "719A2E22767F1A9C7B92F47AEA2F58550FAE2E76189F99181757B04A3595E181",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "Unity.Timeline.dll",
+    "Bytes": 135168,
+    "SHA256": "D6AF36A3B68979A7CDE9392495539135411649C3962A4CB819C469E7E789E70E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AccessibilityModule.dll",
+    "Bytes": 54704,
+    "SHA256": "C1923F47F4B3E837212D817407BBE81FBF0E85E0CED4BF790BBEA592A19DEAD1",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AIModule.dll",
+    "Bytes": 73648,
+    "SHA256": "CCAF3166D338AD16A2B5D0204F6D56F7CA71E8EA702F50E424961A33DC966249",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AMDModule.dll",
+    "Bytes": 21928,
+    "SHA256": "A6FEE3B67ECC30B6881D7DA40CBFB5B225E34859F3AB7EB5E78FA399AAAFA327",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AndroidJNIModule.dll",
+    "Bytes": 116648,
+    "SHA256": "0DF2F03F1F9A5F910BAECA23EA42262EA0B13BBC19F7C61D4739A4E190A51B52",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AnimationModule.dll",
+    "Bytes": 214440,
+    "SHA256": "6ABB58C69CB0F85BFEF5AC81868C3D5CAAC2D6ECAC39DF3C5266BA1C5212BA58",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ARModule.dll",
+    "Bytes": 22440,
+    "SHA256": "A22DEDD69A29550156CA51678CA14EEC4171E266F1B40DF16693DA343E56D9D2",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AssetBundleModule.dll",
+    "Bytes": 39336,
+    "SHA256": "0BF4F1D76A83E50FB661A65F4543D53566CCF9BE0103FFF40754B7A242E36E33",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.AudioModule.dll",
+    "Bytes": 103856,
+    "SHA256": "5487A2DA60E98A0FAD07796D78FAF409CE30C209071495379773BF58B5023F76",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ClothModule.dll",
+    "Bytes": 33192,
+    "SHA256": "E8FC2EEEEA948D0D81F9A663C82041EB47C94BBB1052AB3A3E96232FD4E2EB4B",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ClusterInputModule.dll",
+    "Bytes": 25000,
+    "SHA256": "AFA1C4C1FD5AAEF6853338A9A56E8067CDAC79E145817CC9314F9DC5DF5825A4",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ClusterRendererModule.dll",
+    "Bytes": 23472,
+    "SHA256": "742D39817097EC5BEA1A901305C841E5C32A4323E504D3C90E0CDB405CEC0CED",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ContentLoadModule.dll",
+    "Bytes": 29616,
+    "SHA256": "DB4EF4F1B4874A6801292A754821E749885A90CB7705865F4BC51D4ED3775CEC",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.CoreModule.dll",
+    "Bytes": 1801128,
+    "SHA256": "FBA3821AFB6867FE4D471DC50BF04BA21E6982B33AB6B5336B08A5C55119D990",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.CrashReportingModule.dll",
+    "Bytes": 23472,
+    "SHA256": "D1C4C38522FE06D09A5377A3F2AE30749A3435AF8AB0EA2A89B4F7D715AAEDE0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.DirectorModule.dll",
+    "Bytes": 38824,
+    "SHA256": "E6208DCF5EC7443DB37A38150CF49D6DF9614C64F5D44039901D859AEE176753",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.dll",
+    "Bytes": 170920,
+    "SHA256": "2F43705EBD2E3726BA06FB054BEA23C265F9168BF6D16CAD21789CDBE0E1B179",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.DSPGraphModule.dll",
+    "Bytes": 30632,
+    "SHA256": "31D073B08EB7F27335E6E4868545D728DE1F5B50EA04AB3AB19B80E8CC08E065",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.GameCenterModule.dll",
+    "Bytes": 42920,
+    "SHA256": "709A9A82CA2AD62C72BD008D9A2AD575C9CCAE4573ADA8C92B123ACF2315E48D",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.GIModule.dll",
+    "Bytes": 21424,
+    "SHA256": "68FBB4F5B9E322D2F6145032BDE8826540A9A3037430E1BBF35DCD0A18BCEBBA",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.GraphicsStateCollectionSerializerModule.dll",
+    "Bytes": 14256,
+    "SHA256": "25A9B8DC588C5CC5B75F7D4E98EACED90924EBD8267E23C78F7F7CAFF7DF5942",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.GridModule.dll",
+    "Bytes": 27048,
+    "SHA256": "21633AB98E237829E65FED91A577948D20FD2757449E32F5579811963D349348",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.HierarchyCoreModule.dll",
+    "Bytes": 91560,
+    "SHA256": "D485B18CC761440913981E0FB68D0467D80E6DAD5E98095CE113E814EF7C6E92",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.HotReloadModule.dll",
+    "Bytes": 21416,
+    "SHA256": "38232E8A8BFB1DE0B4670EA79140699FDE421CB0EC5AFC80C16EC4930F2926B0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.IdentifiersModule.dll",
+    "Bytes": 14760,
+    "SHA256": "FABAAC4C8118B647BDFDB18D7C674BC7C3F8CC6D5A3070607B854E5C3233D608",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ImageConversionModule.dll",
+    "Bytes": 28072,
+    "SHA256": "1BDBF4D86118074BD439C4DC72F5A728D80661D09244EA27F5DA50F9CB3C2615",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.IMGUIModule.dll",
+    "Bytes": 207280,
+    "SHA256": "6D79759136956F7E01F07E850905F9A8869CFD6987672CB85310AF35E510E109",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.InputForUIModule.dll",
+    "Bytes": 57256,
+    "SHA256": "1BCABB6E73C02820C49CEC6D520E71FF6BB0CF63DF70DE94D1EF598A51902D0C",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.InputLegacyModule.dll",
+    "Bytes": 42416,
+    "SHA256": "DFC47973633481E2D7E4A310E4381B36B7CFF5A04C04F1D19E7D2395B82637B0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.InputModule.dll",
+    "Bytes": 25000,
+    "SHA256": "77DD6C937ABFBC79721549BC4D46A6BED3F91082A3E7C3C469F9E0528F16E44F",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.InsightsModule.dll",
+    "Bytes": 14256,
+    "SHA256": "F05C5AC2C9285C689FF9FF5C3817E20AD86934EC7B81D3FE700FF4B9476C334B",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.JSONSerializeModule.dll",
+    "Bytes": 23984,
+    "SHA256": "F771274260F351B611E7F8C4EF4D5CEC7C91F24BE46279A68241EDB15E7A4F53",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.LocalizationModule.dll",
+    "Bytes": 23984,
+    "SHA256": "4ECDC64E13C9031658284EC13D59A80ECA3AF35C050BA514A8BB2BD80BCF440A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.MarshallingModule.dll",
+    "Bytes": 64432,
+    "SHA256": "0AB8840D8B58CBF2A5B6E4C7DD143C7BD05E7B86F4C143FDC68A145B5941E15B",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.MultiplayerModule.dll",
+    "Bytes": 15792,
+    "SHA256": "3F004D7B95C7A64E974FAAABCD623DBD45458183048C669912FB103A4F72C926",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.NVIDIAModule.dll",
+    "Bytes": 35248,
+    "SHA256": "4B93FF85CE3DEAEA22A64A990C06410C64E83EF3F8404B8B28E14780BA12DB32",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ParticleSystemModule.dll",
+    "Bytes": 167344,
+    "SHA256": "D32CB4D68C4488C402388BA16BE6A1F2A462B00D76C92CC60BCB74FB5CAC614B",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.PerformanceReportingModule.dll",
+    "Bytes": 21928,
+    "SHA256": "E51CDA569569273E48AEE174885EB98C2F8E3104D44019CC4EDDEFD15DF93F0E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.Physics2DModule.dll",
+    "Bytes": 201128,
+    "SHA256": "BF05C011EAB712D246B4E1D6F8B4730F53043E126BCE205CBB7421098530DFE9",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.PhysicsModule.dll",
+    "Bytes": 182696,
+    "SHA256": "98C812A75597BA922BB668FC3CE3104742B1C617ADCF06267399CA3F35032B3E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.PropertiesModule.dll",
+    "Bytes": 149416,
+    "SHA256": "608AA109762D0D40F04EFED5843254E0AD7EC94C0F38989B3C9CDAB3D5404CFC",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll",
+    "Bytes": 21416,
+    "SHA256": "C8EF40C1FB3693845EBA5E991990B43E3E21587EF41741814CABA3E800BF055E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ScreenCaptureModule.dll",
+    "Bytes": 22952,
+    "SHA256": "40F639B18B6DFD838579072949307290DCA678291EE56A0297D22B61F1AE96D9",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.ShaderVariantAnalyticsModule.dll",
+    "Bytes": 21416,
+    "SHA256": "BD580A04E8FC925DC3607546A3E342F06ED98ECA83692C62DB95F941A3994548",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SharedInternalsModule.dll",
+    "Bytes": 32688,
+    "SHA256": "1F94A744B8CD19FF40AD17EE12E02950BFD1D3AA70477032DC50A14C23895564",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SpatialTracking.dll",
+    "Bytes": 11776,
+    "SHA256": "E01B7C668D0591BDFE38F32FCB38D69A8E93437337D6046F1D3B21FAE4C39367",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SpriteMaskModule.dll",
+    "Bytes": 25512,
+    "SHA256": "42905D3573763A7D883588B0C1EEBF12A5949F73C5F6579C00989598B5D3EB20",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SpriteShapeModule.dll",
+    "Bytes": 28584,
+    "SHA256": "274257D1647168E9C659E9E26B9E853511FA1CAA1DDA1664074D961FDC35476A",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.StreamingModule.dll",
+    "Bytes": 22440,
+    "SHA256": "EE158008AB00CCBE79A2E07AA6DD7AC8D5B2288928CEE27152B34B8475821AC8",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SubstanceModule.dll",
+    "Bytes": 26024,
+    "SHA256": "420AE48C15978074BCCDF6A3591A0C6346A2027875CBF454AC3BA5AACDEBFBB1",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.SubsystemsModule.dll",
+    "Bytes": 38832,
+    "SHA256": "C0A544895EE3E54768A9B7CDCC0B479A9753DA04824086D20FB78866BE4CB1C8",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TerrainModule.dll",
+    "Bytes": 129960,
+    "SHA256": "8359473E7E2AA92B08745CE202B1090A75693C48EB2793052905B25EA05AFAE0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TerrainPhysicsModule.dll",
+    "Bytes": 22448,
+    "SHA256": "79E4E50781AFD5BA0DDC7A304326EC7030D32B7A0558C630A2FDA50C045D1397",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TextCoreFontEngineModule.dll",
+    "Bytes": 84904,
+    "SHA256": "F9C4A4AC38B78AE6D13B9A679EBC2DBF00753AF97EF6F6A3F62A8DD7E2D69971",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TextCoreTextEngineModule.dll",
+    "Bytes": 304048,
+    "SHA256": "833F28531795AD176C3CCC7100B511B990E73593828210F1E5B842F25004E603",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TextRenderingModule.dll",
+    "Bytes": 46000,
+    "SHA256": "7021F3013CABDC67A8F5A2B27E1D98C00F0102C6C45CC26D05312EC1797D7C84",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TilemapModule.dll",
+    "Bytes": 54696,
+    "SHA256": "253A5DC50E8D0DD27CCC08AC44E328060CCA4B82867E1609B813E4470A858A00",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.TLSModule.dll",
+    "Bytes": 29104,
+    "SHA256": "FA187C33D503CCB171A6475E0E6FE9548EA214CC99FBDE95440995BA2AF6E5C6",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UI.dll",
+    "Bytes": 266752,
+    "SHA256": "61703D54EBDAEBB8AE0070257213888AFF7E4BFA5E61599DE7C0049427C07A0E",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UIElementsModule.dll",
+    "Bytes": 2076584,
+    "SHA256": "92EF43568F4671011D4098AB43B533876CD46DBAD11C1CC966B78A9287F6A4D4",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UIModule.dll",
+    "Bytes": 45480,
+    "SHA256": "89E31F812501D5DAE1235545D442284C603141924ABCF387E1F4B447F43C3C27",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UmbraModule.dll",
+    "Bytes": 21424,
+    "SHA256": "AAFEA2CD6C60E4E11C2899E9C262E30F1A6C16D78317964CF06A77138C73F256",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityAnalyticsCommonModule.dll",
+    "Bytes": 32688,
+    "SHA256": "055ED296ABCC2B470803CAA167F921DBDB957CDA607D4F82F2CB47AC29D4E92C",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityAnalyticsModule.dll",
+    "Bytes": 57776,
+    "SHA256": "E6E5753F410D990DB3161685E548C840D6E9C4CA721593AB77695F97008DBEFC",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityConnectModule.dll",
+    "Bytes": 24488,
+    "SHA256": "32E54F1D7A4DDAD4CF48B946197181D7E5BC6639CD504D02C76A5056B3C28569",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityConsentModule.dll",
+    "Bytes": 16304,
+    "SHA256": "18B9D12BBAAAB886DC46596AD3209EF48205C1D5A49D67EB61456F68B59FBAAD",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityCurlModule.dll",
+    "Bytes": 22960,
+    "SHA256": "FA6148C53E47930EDE4F206A4EB540C9C3C56AE64E019CABFEC45E0B3F82AB69",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityTestProtocolModule.dll",
+    "Bytes": 21416,
+    "SHA256": "8CAD0699B08B0F835AB52E8B71D614E00763AB5CF7CD8CD644C19EFF20E17A3C",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityWebRequestAssetBundleModule.dll",
+    "Bytes": 25520,
+    "SHA256": "2A867507E25DFCD6FB9B1B6780345EA544BB185A1B918642BC3AEB438A77DCDB",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityWebRequestAudioModule.dll",
+    "Bytes": 25000,
+    "SHA256": "AD38F8669CCE84A1FDCB1BD9CDC23ADD1E915D43E95ED3CBD3FF27C623D00300",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityWebRequestModule.dll",
+    "Bytes": 65960,
+    "SHA256": "31A4F40977E33998C5B9EF6A8EF71E73D17BAC1328E346D5ABD1C26D8EBF32E0",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityWebRequestTextureModule.dll",
+    "Bytes": 24488,
+    "SHA256": "3964005EC0454FC40950D22A0AB4CFC4F54A45F564454EF8154A0B9164AE7390",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.UnityWebRequestWWWModule.dll",
+    "Bytes": 33192,
+    "SHA256": "2CE6D63987C9C1D8C31C628A273C0CCF87CE77E50D97073266DFE7EB9BB4EA37",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.VehiclesModule.dll",
+    "Bytes": 28072,
+    "SHA256": "A2FF4519CDEA10AB8CB9EE8626E08524E246BC16775D0CEEA27559D0414D61CC",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.VFXModule.dll",
+    "Bytes": 75176,
+    "SHA256": "0B37D7642ECE41ABACE403DDFA6BA712FA99F4207FAAA8E48E6D19C0A5E3B966",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.VideoModule.dll",
+    "Bytes": 55216,
+    "SHA256": "C76622511CCFD22F7C39C6D3577B4295BC0B3F193BF2762413C0EEDCE4AC9859",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.VirtualTexturingModule.dll",
+    "Bytes": 39856,
+    "SHA256": "1498F7CA822B01FFC9248F8C407C5FF6DCF644104481C4F9EA81F7483B4E1C26",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.VRModule.dll",
+    "Bytes": 28584,
+    "SHA256": "6BFF76B5D10C5AF2C6B72053681642542C359838564FC4A1E10731605BD628AB",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.WindModule.dll",
+    "Bytes": 23464,
+    "SHA256": "B40B7D8672F377807B5E8A207F1A07599E73BF08FAA542CC11BFCBF996EBA556",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.XR.LegacyInputHelpers.dll",
+    "Bytes": 23552,
+    "SHA256": "36F539A19BCB2BE8A920C7A95E3CD4BC85AEF0E738DDABDBC90373447265B593",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  },
+  {
+    "Name": "UnityEngine.XRModule.dll",
+    "Bytes": 84904,
+    "SHA256": "C60DAC694CB653E64EFCF147E11DDD849D0E34FEE4C574A7524E5EE0E5EDEF6F",
+    "SourceUnchanged": true,
+    "CopyMatches": true
+  }
+]

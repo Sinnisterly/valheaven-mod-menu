@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>ValheavenModMenu</AssemblyName>
+    <Version>2.1.0</Version>
+    <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</GamePath>
+    <GameManaged>$(GamePath)\valheim_Data\Managed</GameManaged>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameManaged)\Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_valheim.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_utils.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_guiutils.dll" Private="false" />
+    <Reference Include="$(GameManaged)\UnityEngine*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\Splatform.dll" Private="false" />
+    <Reference Include="$(GameManaged)\gui_framework.dll" Private="false" />
+    <Reference Include="$(GamePath)\BepInEx\core\BepInEx.dll" Private="false" />
+    <Reference Include="$(GamePath)\BepInEx\core\0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+# Build outputs
+**/bin/
+**/obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+
+# Install backups and release packages
+backups/
+*.zip
+
+# Local runtime / validation artifacts that are regenerated
+Valheaven-Validation.txt
+Valheaven-Runtime-Validation.txt
+Validation-Results.txt
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.user
+*.suo
+.vs/

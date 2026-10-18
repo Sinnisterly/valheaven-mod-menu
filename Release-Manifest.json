@@ -1,0 +1,14 @@
+{
+  "PluginVersion": "1.0.0",
+  "GameVersion": "1.0.7",
+  "UnityVersion": "6000.0.75f1",
+  "BepInExVersion": "5.4.23.5",
+  "ReleaseSHA256": "FC4899509FC678E01BD5AFFADE320CC1F54DB8F18A533531DAE34FE54765DC3C",
+  "InstalledSHA256": "FC4899509FC678E01BD5AFFADE320CC1F54DB8F18A533531DAE34FE54765DC3C",
+  "InstalledMatches": true,
+  "OfflineChecksPassed": 63,
+  "PluginBuildWarnings": 0,
+  "PluginBuildErrors": 0,
+  "InGameTested": false,
+  "InstalledPath": "D:\\SteamLibrary\\steamapps\\common\\Valheim\\BepInEx\\plugins\\ValheimAdminMenu\\ValheimAdminMenu.dll"
+}
