@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <OutputType>Exe</OutputType>
+    <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</GamePath>
+    <AssemblyName>ValheimAdminMenu.Validation</AssemblyName>
+    <!-- This runner has no game NuGet packages. Game refs come from the installed game. -->
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GamePath)\valheim_Data\Managed\assembly_valheim.dll" Private="false" />
+    <Reference Include="..\ValheimAdminMenu\bin\Release\net472\ValheavenModMenu.dll" />
+    <Reference Include="$(GamePath)\valheim_Data\Managed\UnityEngine.CoreModule.dll" Private="false" />
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+  </ItemGroup>
+</Project>

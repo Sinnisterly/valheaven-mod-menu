@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>ValheavenModMenu</AssemblyName>
+    <Version>2.5.11</Version>
+    <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</GamePath>
+    <GameManaged>$(GamePath)\valheim_Data\Managed</GameManaged>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <PayloadDir>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\payload</PayloadDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameManaged)\Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_valheim.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_utils.dll" Private="false" />
+    <Reference Include="$(GameManaged)\assembly_guiutils.dll" Private="false" />
+    <Reference Include="$(GameManaged)\UnityEngine*.dll" Private="false" />
+    <Reference Include="$(GameManaged)\Splatform.dll" Private="false" />
+    <Reference Include="$(GameManaged)\gui_framework.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Locales\en.json;Locales\ru.json;Locales\de.json;Locales\fr.json;Locales\es.json;Locales\pt-BR.json;Locales\zh-CN.json;Locales\zh-TW.json;Locales\ja.json" />
+  </ItemGroup>
+  <!--
+    ILRepack cannot merge this Unity-referenced assembly (Cecil NRE).
+    Ship one version.dll by embedding menu + Harmony as two RCDATA resources (see Native/VersionProxy).
+  -->
+  <Target Name="PackManagedPayload" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <_HarmonyCandidate Include="@(ReferencePathWithRefAssemblies)" Condition="'%(Filename)' == '0Harmony'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_HarmonyPath>@(_HarmonyCandidate)</_HarmonyPath>
+    </PropertyGroup>
+    <Error Condition="'$(_HarmonyPath)' == ''" Text="0Harmony.dll not found on ReferencePathWithRefAssemblies; cannot stage payload." />
+    <MakeDir Directories="$(PayloadDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(PayloadDir)\ValheavenModMenu.dll" />
+    <Copy SourceFiles="$(_HarmonyPath)" DestinationFiles="$(PayloadDir)\0Harmony.dll" />
+    <Message Importance="high" Text="Managed payload staged: $(PayloadDir)\ValheavenModMenu.dll + 0Harmony.dll (embedded into version.dll at native build)" />
+  </Target>
+</Project>

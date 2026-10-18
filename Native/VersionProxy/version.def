@@ -1,0 +1,20 @@
+; version.dll - forward Version APIs to System32\version.dll (resolved at runtime in dllmain).
+LIBRARY version
+EXPORTS
+    GetFileVersionInfoA
+    GetFileVersionInfoByHandle
+    GetFileVersionInfoExA
+    GetFileVersionInfoExW
+    GetFileVersionInfoSizeA
+    GetFileVersionInfoSizeExA
+    GetFileVersionInfoSizeExW
+    GetFileVersionInfoSizeW
+    GetFileVersionInfoW
+    VerFindFileA
+    VerFindFileW
+    VerInstallFileA
+    VerInstallFileW
+    VerLanguageNameA
+    VerLanguageNameW
+    VerQueryValueA
+    VerQueryValueW

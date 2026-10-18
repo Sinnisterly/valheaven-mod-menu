@@ -1,0 +1,3 @@
+/* Embedded managed assemblies; Embed-Payload.ps1 refreshes the .bin copies. */
+101 RCDATA "menu.bin"
+102 RCDATA "harmony.bin"
