@@ -105,11 +105,26 @@ namespace ValheimAdminMenu
         internal void Show()
         {
             if(!root)BuildShell();
+            EnsureCanvas();
             root.SetActive(true);
             AttachInput();
             BuildPage();
             FitWindow();
             ClearHover();
+            Canvas.ForceUpdateCanvases();
+        }
+        private void EnsureCanvas()
+        {
+            if(!root)return;
+            if(!canvas)canvas=root.GetComponent<Canvas>();
+            if(!canvas)canvas=root.AddComponent<Canvas>();
+            // Overlay is independent of the game camera; force it on in case a prior failure disabled it.
+            canvas.enabled=true;
+            canvas.renderMode=RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder=32760;
+            if(!root.GetComponent<UnityEngine.UI.GraphicRaycaster>())
+                root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            if(!canvasRect)canvasRect=(RectTransform)root.transform;
         }
         internal void Hide()
         {
@@ -169,7 +184,17 @@ namespace ValheimAdminMenu
         internal void Tick()
         {
             if(!app.Open || !root)return;
-            if(inputSystem!=EventSystem.current){app.SetOpen(false);return;}
+            // Scene / UI swaps can replace EventSystem; reattach instead of closing (DX11 exclusive focus blips did this too).
+            if(inputSystem!=EventSystem.current)
+            {
+                try { AttachInput(); }
+                catch (Exception ex) { AppLog.Warning("Menu input reattach failed: " + ex.Message); return; }
+            }
+            if(!root.activeSelf || (canvas && !canvas.enabled))
+            {
+                try { EnsureCanvas(); root.SetActive(true); }
+                catch (Exception ex) { AppLog.Warning("Menu canvas restore failed: " + ex.Message); return; }
+            }
             if(rebuild){BuildPage();rebuild=false;}
             FitWindow();
             if(!string.Equals(statusText.text, app.Status, StringComparison.Ordinal)) statusText.text=app.Status;
@@ -254,12 +279,14 @@ namespace ValheimAdminMenu
         }
         private void FitWindow()
         {
-            if(!window)return;
+            if(!window || !canvasRect)return;
+            var screen=canvasRect.rect.size;
+            // First overlay frames (esp. DX11 exclusive) can report a zero canvas; wait rather than park the window off-screen.
+            if(screen.x<64f || screen.y<64f)return;
             // Don't rescale mid-drag (slider/drag keep their transform until release).
             if(!Input.GetMouseButton(0) || appliedScale==0)
-                appliedScale=Mathf.Max(.35f,Mathf.Min(app.UiScale,(canvasRect.rect.width-32)/Width,(canvasRect.rect.height-32)/Height));
+                appliedScale=Mathf.Max(.35f,Mathf.Min(app.UiScale,(screen.x-32)/Width,(screen.y-32)/Height));
             window.localScale=Vector3.one*appliedScale;
-            var screen=canvasRect.rect.size;
             if(position.x<0 || position.y<0)position=new Vector2((screen.x-Width*appliedScale)/2,(screen.y-Height*appliedScale)/2);
             position.x=Mathf.Clamp(position.x,8,Mathf.Max(8,screen.x-Width*appliedScale-8));
             position.y=Mathf.Clamp(position.y,8,Mathf.Max(8,screen.y-Height*appliedScale-8));

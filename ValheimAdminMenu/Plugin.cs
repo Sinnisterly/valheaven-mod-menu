@@ -19,7 +19,8 @@ namespace ValheimAdminMenu
         /// <summary>Steam 1.0.7+ (checked through 1.0.20). Reflection.Check is the real gate.</summary>
         private const int MinSupportedPatch = 7;
         internal static Plugin Instance;
-        internal static bool Capturing => Instance && (Instance.Open || Time.frameCount <= Instance.blockThroughFrame) && Application.isFocused;
+        // While the menu is open, keep capturing even across brief DX11 exclusive-fullscreen focus blips.
+        internal static bool Capturing => Instance && (Instance.Open || (Time.frameCount <= Instance.blockThroughFrame && Application.isFocused));
         internal static bool BlockingInput => Capturing && Instance.Settings != null && Instance.Settings.Data.blockGameInputs;
         internal readonly Queue<Action> Commands = new Queue<Action>();
         internal KeyCode Hotkey = KeyCode.F8;
@@ -78,7 +79,10 @@ namespace ValheimAdminMenu
 #if VALHEAVEN_UI_CHECK
                 StartCoroutine(Menu.RuntimeCheck());
 #endif
-                AppLog.Info("Valheaven " + ProductVersion + " ready for Valheim " + game + ". Hotkey: " + Hotkey);
+                AppLog.Info("Valheaven " + ProductVersion + " ready for Valheim " + game
+                    + ". Hotkey: " + Hotkey
+                    + ". GFX: " + SystemInfo.graphicsDeviceType
+                    + " / " + Screen.fullScreenMode);
             }
             catch (Exception ex)
             {
@@ -156,7 +160,14 @@ namespace ValheimAdminMenu
             catch (ExitGUIException) { throw; }
             catch (Exception ex) { AppLog.Warning("Placement HUD draw failed: " + ex.Message); }
         }
-        private void OnApplicationFocus(bool focused) { if (!focused) SetOpen(false); }
+        // DX11 exclusive fullscreen can blip focus when unlocking the cursor; closing here made F8 look dead.
+        // Keep the menu open across focus changes and re-assert the cursor when focus returns.
+        private void OnApplicationFocus(bool focused)
+        {
+            if (!focused || !Open) return;
+            try { ReleaseCursor(); BlockNativeUI(); }
+            catch (Exception ex) { AppLog.Warning("Focus restore failed: " + ex.Message); }
+        }
         private void OnApplicationQuit()
         {
             if (Settings != null && Settings.Data.autoSave)
@@ -179,10 +190,20 @@ namespace ValheimAdminMenu
                 priorLock = ZCursor.LockState;
                 priorRequested = ZCursor.IsRequested;
                 priorCursorVisible = Cursor.visible;
-                Open = true;
-                Menu.Show();
-                BlockNativeUI();
-                ReleaseCursor();
+                try
+                {
+                    Menu.Show();
+                    Open = true;
+                    BlockNativeUI();
+                    ReleaseCursor();
+                }
+                catch (Exception ex)
+                {
+                    Open = false;
+                    try { Menu?.Hide(); } catch { /* ignore */ }
+                    AppLog.Error(ex);
+                    Report(L.T("ui.ui_closed_after_a_rendering"));
+                }
             }
             else
             {

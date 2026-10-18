@@ -6,6 +6,9 @@ Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe`
 - **Game:** Valheim 1.0.7+ (checked through 1.0.20)
 - **Open menu:** F8 (rebindable in Settings)
 
+### Changelog (3.0.0+)
+- **DX11 menu not showing (Vulkan OK):** stop auto-closing on focus loss (Exclusive Fullscreen blips when unlocking the cursor). Bootstrap failures now log + retry; menu canvas/show path is more resilient. Ready line logs GFX + fullscreen mode.
+
 ---
 
 ## What you get
@@ -41,7 +44,17 @@ To uninstall, delete `version.dll`. Optional leftovers: `Valheaven.settings.json
 | `release/forum-credit` | Same code; in-menu credit text is just `Loathecsgo`. |
 | `original-source` | Old 2.1.0 snapshot. Don't base new work here. |
 
-New features go on `release/valheaven-full-credit`. Forum branch gets mirrored when a forum package is cut.
+New features go on `release/valheaven-full-credit`. Forum branch gets mirrored when a forum package is cut:
+
+```powershell
+# After full-credit is committed and clean:
+.\Mirror-ForumCredit.ps1
+git commit -m "Forum credit: Loathecsgo only (mirror of release/valheaven-full-credit)."
+git push --force-with-lease origin release/forum-credit
+git checkout release/valheaven-full-credit
+```
+
+Or one shot (still runs as you): `.\Mirror-ForumCredit.ps1 -Commit -Push`
 
 ---
 
@@ -116,7 +129,7 @@ Before you open a PR:
 - UI copy: update `en.json` first; say what's still English elsewhere
 - Mention what you actually clicked in-game (Valheim version + tabs)
 
-Feature code lands on full-credit first; forum-credit is for the credit string / package mirror.
+Feature code lands on full-credit first; `Mirror-ForumCredit.ps1` resets forum-credit to that tip and rewrites locale credit strings to `Loathecsgo`.
 
 ```
 ValheimAdminMenu/     C# menu + patches

@@ -3,6 +3,7 @@ using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ValheimAdminMenu;
 
 namespace Valheaven
 {
@@ -12,6 +13,7 @@ namespace Valheaven
         private static bool started;
         private static bool scheduled;
         private static Harmony bootstrap;
+        private static int failures;
 
         /// <summary>Idempotent. Safe from a non-main Mono thread.</summary>
         public static void Start()
@@ -39,18 +41,21 @@ namespace Valheaven
                 // Plugin.Awake destroys a duplicate host.
                 var host = new GameObject("ValheavenHost");
                 UnityEngine.Object.DontDestroyOnLoad(host);
-                host.AddComponent<ValheimAdminMenu.Plugin>();
+                host.AddComponent<Plugin>();
                 started = true;
+                AppLog.Info("Bootstrap host created on main thread (" + SystemInfo.graphicsDeviceType + ").");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Native host logs invoke-time failures; don't rethrow into Unity's scene callback.
+                failures++;
+                // Don't rethrow into Unity's scene callback; keep the gate patched and retry next scene change.
+                try { AppLog.Error("Bootstrap failed (attempt " + failures + "): " + ex); }
+                catch { /* AppLog itself may not be writable yet */ }
+                return;
             }
-            finally
-            {
-                try { bootstrap?.UnpatchAll(bootstrap.Id); } catch { /* ignore */ }
-                bootstrap = null;
-            }
+
+            try { bootstrap?.UnpatchAll(bootstrap.Id); } catch { /* ignore */ }
+            bootstrap = null;
         }
     }
 }
