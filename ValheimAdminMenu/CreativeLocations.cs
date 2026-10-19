@@ -60,7 +60,7 @@ namespace ValheimAdminMenu
         {
             var zs = ZoneSystem.instance;
             if (zs == null) throw new InvalidOperationException("World is not ready.");
-            var zl = zs.m_locations.FirstOrDefault(l => l != null && l.m_prefab.IsValid && l.m_prefab.Name == name);
+            var zl = zs.m_locations.FirstOrDefault(l => l != null && l.m_prefabName == name && l.m_prefab.IsValid);
             if (zl == null) throw new InvalidOperationException("Unknown location " + name + ".");
             spawn = spawn ?? AccessTools.Method(typeof(ZoneSystem), "SpawnLocation", new[] { typeof(ZoneSystem.ZoneLocation), typeof(int),
                 typeof(Vector3), typeof(Quaternion), typeof(ZoneSystem.SpawnMode), typeof(List<GameObject>), typeof(bool) });

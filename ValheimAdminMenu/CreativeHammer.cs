@@ -96,7 +96,10 @@ namespace ValheimAdminMenu
             foreach (var prefab in list)
                 AddRecipe(prefab, icon);
             var dungeons = list.Where(p => p.GetComponent<DungeonGenerator>()).Select(p => p.name + " (" + p.GetComponent<DungeonGenerator>().m_algorithm + ")").ToList();
-            int locations = AddLocationRecipes(icon);
+            // A failure here must not skip EnsureTableCapacity below, or every custom tab breaks with it.
+            int locations = 0;
+            try { locations = AddLocationRecipes(icon); }
+            catch (Exception caught) { AppLog.Error("Creative", "World locations could not be added to the catalog.", caught); }
             AppLog.Info("Creative", "Catalog: " + recipes.Count + " recipes from " + list.Count + " prefabs and " + locations + " world locations; "
                 + dungeons.Count + " dungeon generators: " + string.Join(", ", dungeons));
 
@@ -548,10 +551,11 @@ namespace ValheimAdminMenu
             }
             var seen = new HashSet<string>(StringComparer.Ordinal);
             int added = 0;
-            foreach (var zl in zs.m_locations.OrderBy(l => l?.m_prefab.Name ?? "", StringComparer.OrdinalIgnoreCase))
+            foreach (var zl in zs.m_locations.Where(l => l != null && !string.IsNullOrEmpty(l.m_prefabName)).OrderBy(l => l.m_prefabName, StringComparer.OrdinalIgnoreCase))
             {
-                if (zl == null || !zl.m_enable || !zl.m_prefab.IsValid) continue;
-                string name = zl.m_prefab.Name;
+                // m_prefabName, not m_prefab.Name: an empty asset ID throws inside the loader.
+                if (!zl.m_enable || !zl.m_prefab.IsValid) continue;
+                string name = zl.m_prefabName;
                 if (string.IsNullOrEmpty(name) || !seen.Add(name)) continue;
                 try
                 {
