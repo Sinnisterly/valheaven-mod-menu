@@ -6,6 +6,19 @@ Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe`
 - **Game:** Valheim 1.0.7+ (checked through 1.0.20)
 - **Open menu:** F8 (rebindable in Settings)
 
+## Unofficial Disclaimer
+This is an unofficial modification for the game Valheim. It is not approved, authorized, 
+supported, or affiliated with Iron Gate Studio or Coffee Stain Publishing in any way. 
+
+The creation and use of this mod are done entirely at your own risk. The authors cannot 
+guarantee compatibility with future versions or updates of Valheim.
+
+In accordance with Iron Gate's modding policy, this mod is and will always remain completely 
+free to use and download.
+
+I do not attempt to, nor plan to bypass any user-created mod that acts as an anti-cheat.
+
+
 ## Support me on Ko-Fi if you want!
 - https://ko-fi.com/loathed
 - Any donation is appreciated, but none are needed; I was asked to add this by users, that is all.
@@ -144,4 +157,4 @@ Validation/           offline checks
 
 Loathe (@Sinnisterly). Forum builds credit `Loathecsgo` only.
 
-Valheim is © Iron Gate AB / Coffee Stain. Unofficial fan project; not affiliated.
+Valheim is © Iron Gate AB / Coffee Stain. This is an Unofficial fan project; not affiliated.
