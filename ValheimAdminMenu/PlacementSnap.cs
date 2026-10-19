@@ -67,6 +67,8 @@ namespace ValheimAdminMenu
         private static bool IsExcludedGhost(GameObject ghost)
         {
             if (!ghost) return true;
+            // Creative cliffs/NPCs/props shouldn't jump onto building snap points.
+            if (ghost.GetComponent<CreativeRecipe>()) return true;
             if (ghost.GetComponent<Plant>()) return true;
             if (ghost.GetComponent<TerrainModifier>() || ghost.GetComponentInChildren<TerrainModifier>(true)) return true;
             string n = ghost.name ?? "";

@@ -114,6 +114,7 @@ namespace ValheimAdminMenu
         private static GUIStyle copyMarkerStyle;
         private static float nextAutoFeedAt;
         private static float nextRepairAoeAt;
+        private static bool transientActive;
 
         internal sealed class CopiedPiece
         {
@@ -130,9 +131,20 @@ namespace ValheimAdminMenu
             var player = Player.m_localPlayer;
             if (!player || player.IsDead() || player.IsTeleporting())
             {
-                ClearTransientBuildState(player);
+                // Once on entry; per-frame cleanup while teleporting did nothing useful.
+                if (!transientActive)
+                {
+                    transientActive = true;
+                    ClearTransientBuildState(player);
+                }
                 VfxSuite.Tick(null);
                 return;
+            }
+            if (transientActive)
+            {
+                // Landed / respawned: drop any leftover float state at the real position.
+                transientActive = false;
+                EnsurePlayerPhysics(player);
             }
             VfxSuite.Tick(player);
             if (phase.AutoFeedTames && Time.unscaledTime >= nextAutoFeedAt)
@@ -181,6 +193,7 @@ namespace ValheimAdminMenu
             VfxSuite.ResetSession();
             photoOwnedHud = false;
             RestoreMinimapZoomRange();
+            transientActive = false;
             ClearTransientBuildState(Player.m_localPlayer);
         }
 
@@ -1917,8 +1930,8 @@ namespace ValheimAdminMenu
             }
             if (!phase.FreecamBuild)
             {
+                // Edge only: per-frame resets wiped m_maxAirAltitude (no fall damage / landing) every frame.
                 if (buildCamOwned) RestoreFreecamBuild(player);
-                else EnsurePlayerPhysics(player);
                 return;
             }
             if (GameCamera.instance && !GameCamera.InFreeFly())
@@ -1992,16 +2005,8 @@ namespace ValheimAdminMenu
         private static void ResetAirAltitude(Player player)
         {
             if (!player) return;
-            try
-            {
-                float y = player.transform.position.y;
-                Reflection.Set(player, "m_maxAirAltitude", y);
-                Reflection.Set(player, "m_baseAirAltitude", y);
-            }
-            catch
-            {
-                try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
-            }
+            // Valheim 1.0.20 has no m_baseAirAltitude; writing it threw (uncached) every frame.
+            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
         }
 
         private static void TickFlyingMount(Player player)

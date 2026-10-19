@@ -1168,7 +1168,7 @@
   "build.hud_terrain": "HUD: pieces in terrain",
   "build.hud_prefab": "HUD: prefab name",
   "build.drag_enabled": "Drag building",
-  "build.drag_enabled.help": "Optional. Walls, floors, beams, roofs only. Click places one piece; hold briefly (or drag along the snap axis) to stretch a line. Off by default. RMB cancels a drag.",
+  "build.drag_enabled.help": "Optional. Walls, floors, beams, roofs, pillars only. Click places one piece; hold briefly and aim along the row, or up/down for walls and pillars, to stretch a line. Off by default. RMB cancels a drag.",
   "build.drag_max": "Drag max pieces",
   "build.drag_max.help": "Hard cap for one drag stroke.",
   "build.blueprints.note": "Saved across worlds and characters. Import .vbp, PlanBuild .blueprint, or BetterBuilding .bbp. Export writes .vbp.",

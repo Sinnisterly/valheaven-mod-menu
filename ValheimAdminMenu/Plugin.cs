@@ -15,7 +15,7 @@ namespace ValheimAdminMenu
     public sealed class Plugin : MonoBehaviour
     {
         public const string Id = "local.valheim.adminmenu";
-        public const string ProductVersion = "3.0.4";
+        public const string ProductVersion = "3.0.5";
         /// <summary>Steam 1.0.7+ (checked through 1.0.20). Reflection.Check is the real gate.</summary>
         private const int MinSupportedPatch = 7;
         internal static Plugin Instance;
@@ -42,6 +42,7 @@ namespace ValheimAdminMenu
         private Player lastPlayer;
         private bool compatible;
         private int blockThroughFrame = -1;
+        private bool exclusiveHinted;
         private readonly List<BaseInputModule> blockedModules = new List<BaseInputModule>();
 
         private void Awake()
@@ -83,6 +84,8 @@ namespace ValheimAdminMenu
                     + ". Hotkey: " + Hotkey
                     + ". GFX: " + SystemInfo.graphicsDeviceType
                     + " / " + Screen.fullScreenMode);
+                if (Screen.fullScreenMode == FullScreenMode.ExclusiveFullScreen)
+                    AppLog.Warning("Exclusive Fullscreen detected. If the menu doesn't appear, switch Valheim to Fullscreen Window (borderless).");
             }
             catch (Exception ex)
             {
@@ -117,6 +120,7 @@ namespace ValheimAdminMenu
                     Commands.Clear();
                     Overlay.Clear();
                 }
+                CharacterListGuard.Tick();
                 Features.Tick(player);
                 Expansion.Tick();
                 Phase.Tick();
@@ -196,6 +200,7 @@ namespace ValheimAdminMenu
                     Open = true;
                     BlockNativeUI();
                     ReleaseCursor();
+                    HintExclusiveFullscreen();
                 }
                 catch (Exception ex)
                 {
@@ -225,6 +230,18 @@ namespace ValheimAdminMenu
                 Cursor.visible = priorCursorVisible;
                 if (GameCamera.instance) GameCamera.instance.UpdateMouseCapture();
             }
+        }
+        // The menu canvas may be the thing that's invisible, so say it through the game's own HUD once.
+        private void HintExclusiveFullscreen()
+        {
+            if (exclusiveHinted || Screen.fullScreenMode != FullScreenMode.ExclusiveFullScreen) return;
+            exclusiveHinted = true;
+            try
+            {
+                if (MessageHud.instance)
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Valheaven: if the menu is invisible, set Valheim to Fullscreen Window.");
+            }
+            catch { }
         }
         private void BlockNativeUI()
         {
@@ -364,6 +381,8 @@ namespace ValheimAdminMenu
             Method(typeof(Plant), "GetGrowTime");
             Method(typeof(Player), "UpdatePlacement", typeof(bool), typeof(float));
             Method(typeof(Character), "AddStaggerDamage", typeof(float), typeof(Vector3), typeof(HitData));
+            Field(typeof(Character), "s_characters");
+            Method(typeof(Player), "PlacePiece", typeof(Piece), typeof(Vector3), typeof(Quaternion), typeof(bool), typeof(bool));
         }
     }
 

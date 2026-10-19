@@ -2,7 +2,7 @@
 
 Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe` and you're done. It doesn't need BepInEx; if you already use BepInEx for other mods, leave that alone.
 
-- **Version:** 3.0.4
+- **Version:** 3.0.5
 - **Game:** Valheim 1.0.7+ (checked through 1.0.20)
 - **Open menu:** F8 (rebindable in Settings)
 
@@ -11,6 +11,7 @@ Drop-in Valheim mod menu. You put one file (`version.dll`) next to `valheim.exe`
 - Any donation is appreciated, but none are needed; I was asked to add this by users, that is all.
 
 ### Changelog (3.0.0+)
+- **3.0.5:** Fixed the real cause of the "falling/sliding mode" and "can't place anything (hammer/hoe/cultivator)" bugs: Hammer all prefabs left a broken creature inside build ghosts, which stayed in the game's character list until restart and stopped AI and player movement from updating. Creature ghosts are now fully stripped, and a guard cleans up any leftover. Drag build: the click always places through vanilla, holding extends the line, and line pieces respect wards and material costs. Walls and pillars can now be dragged up or down as well as sideways. Hammer all prefabs: night and raid creatures (e.g. Ghost) no longer despawn right after placing, props with no visible mesh show a real preview or a marker cube, and placements that vanish or show nothing are named in Valheaven.log. Fall damage works again. DX11: extra bootstrap path when the menu never started, menu-visibility details in Valheaven.log, and a hint when Exclusive Fullscreen is active.
 - **3.0.4:** God mode / flight keep working when other mods overwrite vanilla debug flags (re-assert + local fly fallback only if needed). Settings → Interface → Section layout: Dropdowns (default) or Full list.
 - **3.0.3:** Craft-from-chests no longer hitch when opening the crafting menu (cache nearby chest stacks; stop ClaimOwnership spam on every recipe check).
 - **3.0.2:** Hardened related 3.0 features - free-rotation / universal snap / drag only on build hammer (not hoe/cultivator); paste/drag/freecam-build/mount float state clears on portal/death; mount AI gravity restored on detach.

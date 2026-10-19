@@ -4,7 +4,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>ValheavenModMenu</AssemblyName>
-    <Version>3.0.4</Version>
+    <Version>3.0.5</Version>
     <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</GamePath>
     <GameManaged>$(GamePath)\valheim_Data\Managed</GameManaged>
     <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>

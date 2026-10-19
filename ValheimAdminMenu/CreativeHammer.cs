@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -203,6 +204,8 @@ namespace ValheimAdminMenu
                 rot = Quaternion.Euler(0f, rot.eulerAngles.y, 0f);
 
             var obj = UnityEngine.Object.Instantiate(source, pos, rot);
+            // A few ZNetScene prefabs are stored inactive; the clone would sit hidden with no ZDO.
+            if (!obj.activeSelf) obj.SetActive(true);
             EnsureSingleZNetView(obj);
 
             var view = obj.GetComponent<ZNetView>() ?? obj.GetComponentInChildren<ZNetView>(true);
@@ -249,6 +252,95 @@ namespace ValheimAdminMenu
             catch { }
 
             ApplyCreatureBrain(obj);
+            AppLog.Info("Creative placed " + prefabName + " at " + obj.transform.position.ToString("F1") + ".");
+            if (Plugin.Instance) Plugin.Instance.StartCoroutine(VerifyPlaced(obj, prefabName, DescribeScripts(obj)));
+        }
+
+        /// <summary>Report placements that vanish or show nothing, with their scripts, so failing prefabs can be named.</summary>
+        private static IEnumerator VerifyPlaced(GameObject obj, string prefabName, string scripts)
+        {
+            yield return new WaitForSecondsRealtime(2f);
+            string problem = null;
+            if (!obj) problem = "removed itself right after placing";
+            else if (!obj.activeInHierarchy) problem = "was hidden right after placing";
+            else if (!HasVisibleGeometry(obj, includeParticles: true)) problem = "placed but has nothing visible";
+            if (problem == null) yield break;
+            AppLog.Warning("Creative " + prefabName + " " + problem + " (scripts: " + scripts + ").");
+            Plugin.Instance?.Report(prefabName + " " + problem + ". Details in Valheaven.log.");
+        }
+
+        private static string DescribeScripts(GameObject obj)
+        {
+            var names = new List<string>();
+            foreach (var behaviour in obj.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (!behaviour) continue;
+                string n = behaviour.GetType().Name;
+                if (!names.Contains(n)) names.Add(n);
+                if (names.Count >= 14) break;
+            }
+            return names.Count == 0 ? "none" : string.Join(", ", names);
+        }
+
+        /// <summary>Enabled, active, non-empty renderers (particles optional; vanilla ghosts hide them).</summary>
+        internal static bool HasVisibleGeometry(GameObject go, bool includeParticles)
+        {
+            foreach (var r in go.GetComponentsInChildren<Renderer>(false))
+            {
+                if (!r || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (r is ParticleSystemRenderer && !includeParticles) continue;
+                if (r.bounds.size.sqrMagnitude > 0.0001f) return true;
+            }
+            return false;
+        }
+
+        // Ghost proxies keep only renderers; meshes a script would switch on, or particle-only props, render nothing.
+        private static readonly HashSet<string> markerLogged = new HashSet<string>(StringComparer.Ordinal);
+        private static Material markerMaterial;
+
+        internal static void EnsureGhostVisible(GameObject ghost)
+        {
+            if (!ghost || HasVisibleGeometry(ghost, includeParticles: false)) return;
+            if (ActivateHiddenVisual(ghost) && HasVisibleGeometry(ghost, includeParticles: false)) return;
+
+            var marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            marker.name = "VHCreativeMarker";
+            var col = marker.GetComponent<Collider>();
+            if (col) UnityEngine.Object.DestroyImmediate(col);
+            marker.layer = ghost.layer;
+            marker.transform.SetParent(ghost.transform, false);
+            marker.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+            marker.transform.localRotation = Quaternion.identity;
+            marker.transform.localScale = Vector3.one * 0.8f;
+            var mr = marker.GetComponent<MeshRenderer>();
+            if (mr)
+            {
+                if (!markerMaterial)
+                {
+                    var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+                    if (shader) markerMaterial = new Material(shader) { color = new Color(.35f, .85f, 1f, .45f) };
+                }
+                if (markerMaterial) mr.sharedMaterial = markerMaterial;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+            string key = ghost.name;
+            if (markerLogged.Add(key))
+                AppLog.Info("Creative ghost " + key + " has no visible mesh (particles/scripted visuals); showing a marker cube.");
+        }
+
+        /// <summary>Turn on the first inactive child that carries a mesh (variants a script would normally pick).</summary>
+        private static bool ActivateHiddenVisual(GameObject ghost)
+        {
+            foreach (var r in ghost.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r || r is ParticleSystemRenderer || r.gameObject.activeInHierarchy) continue;
+                if (r is MeshRenderer && (!r.GetComponent<MeshFilter>() || !r.GetComponent<MeshFilter>().sharedMesh)) continue;
+                for (var t = r.transform; t && t != ghost.transform; t = t.parent)
+                    if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+                return true;
+            }
+            return false;
         }
 
         private static Vector3 SnapToGround(Vector3 pos, float lift)
@@ -279,6 +371,13 @@ namespace ValheimAdminMenu
             if (!character) return;
 
             bool fullAi = Plugin.Instance == null || Plugin.Instance.Settings.Data.hammerCreatureFullAi;
+            // Ghosts/night or raid spawns walk off and despawn in daylight or outside an event, so they seem to never spawn.
+            foreach (var monster in obj.GetComponentsInChildren<MonsterAI>(true))
+            {
+                if (!monster) continue;
+                try { monster.SetDespawnInDay(false); } catch { }
+                try { monster.SetEventCreature(false); } catch { }
+            }
             var brains = obj.GetComponentsInChildren<BaseAI>(true);
             foreach (var ai in brains)
             {
@@ -325,7 +424,13 @@ namespace ValheimAdminMenu
             {
                 var proxy = UnityEngine.Object.Instantiate(prefab, root.transform, false);
                 proxy.name = "VHCreative_" + prefab.name;
-                PrepareGhostProxy(proxy, prefab);
+                if (!PrepareGhostProxy(proxy, prefab))
+                {
+                    // A surviving Character/AI in the ghost leaks into Character.s_characters and breaks AI + placement.
+                    AppLog.Warning("Creative hammer skipped " + prefab.name + ": gameplay scripts could not be stripped.");
+                    UnityEngine.Object.DestroyImmediate(proxy);
+                    return;
+                }
 
                 var piece = proxy.GetComponent<Piece>() ?? proxy.AddComponent<Piece>();
                 bool clip = WantsClipEverything(prefab);
@@ -354,19 +459,9 @@ namespace ValheimAdminMenu
         }
 
         /// <summary>Keep meshes/colliders for the ghost; strip gameplay. Meshless spawners get a child from the creature prefab.</summary>
-        private static void PrepareGhostProxy(GameObject proxy, GameObject sourcePrefab)
+        private static bool PrepareGhostProxy(GameObject proxy, GameObject sourcePrefab)
         {
-            foreach (var component in proxy.GetComponentsInChildren<Component>(true))
-            {
-                if (!component || component is Transform || component is Piece) continue;
-                if (component is Renderer || component is MeshFilter || component is LODGroup || component is Collider)
-                    continue;
-                if (component is Rigidbody || component is WearNTear) continue;
-                // Animator stays so skinned meshes still draw in the ghost.
-                if (component is Animator) continue;
-                try { UnityEngine.Object.DestroyImmediate(component); }
-                catch { }
-            }
+            if (!StripToVisual(proxy)) return false;
 
             if (!proxy.GetComponentInChildren<Renderer>(true))
             {
@@ -379,14 +474,10 @@ namespace ValheimAdminMenu
                     {
                         var child = UnityEngine.Object.Instantiate(visual, proxy.transform, false);
                         child.name = "VHCreativeVisual";
-                        foreach (var component in child.GetComponentsInChildren<Component>(true))
-                        {
-                            if (!component || component is Transform) continue;
-                            if (component is Renderer || component is MeshFilter || component is LODGroup || component is Collider || component is Animator)
-                                continue;
-                            try { UnityEngine.Object.DestroyImmediate(component); }
-                            catch { }
-                        }
+                        // Piece on the visual would be a second ghost piece; only the proxy root keeps one.
+                        foreach (var extra in child.GetComponentsInChildren<Piece>(true))
+                            if (extra) UnityEngine.Object.DestroyImmediate(extra);
+                        if (!StripToVisual(child)) return false;
                         child.transform.localPosition = Vector3.zero;
                         child.transform.localRotation = Quaternion.identity;
                     }
@@ -405,7 +496,38 @@ namespace ValheimAdminMenu
                 }
                 else box.size = Vector3.one;
             }
+            return true;
         }
+
+        /// <summary>
+        /// Strip everything but visuals/colliders. Reverse order + repeat passes so dependents (CharacterDrop) go before
+        /// what they require (Character); one forward pass left live Humanoids in ghosts. False if any script survives.
+        /// </summary>
+        private static bool StripToVisual(GameObject go)
+        {
+            for (int pass = 0; pass < 8; pass++)
+            {
+                var components = go.GetComponentsInChildren<Component>(true);
+                bool removed = false;
+                for (int i = components.Length - 1; i >= 0; i--)
+                {
+                    var component = components[i];
+                    if (!component || KeepForVisual(component)) continue;
+                    try { UnityEngine.Object.DestroyImmediate(component); }
+                    catch { }
+                    if (!component) removed = true;
+                }
+                if (!removed) break;
+            }
+            foreach (var component in go.GetComponentsInChildren<Component>(true))
+                if (component && !KeepForVisual(component)) return false;
+            return true;
+        }
+
+        // Animator stays so skinned meshes still draw in the ghost.
+        private static bool KeepForVisual(Component c) =>
+            c is Transform || c is Renderer || c is MeshFilter || c is LODGroup || c is Collider || c is Animator
+            || c is Piece || c is CreativeRecipe;
 
         private static GameObject VisualSubject(GameObject prefab)
         {
@@ -461,20 +583,25 @@ namespace ValheimAdminMenu
 
             bool prior = ZNetView.m_forceDisableInit;
             ZNetView.m_forceDisableInit = true;
+            GameObject holder = null;
             GameObject instance = null;
             GameObject camObject = null;
             RenderTexture target = null;
             try
             {
-                instance = UnityEngine.Object.Instantiate(prefab);
+                // Inactive parent: no Awake runs (dungeons, spawners, characters) before scripts are stripped.
+                holder = new GameObject("VHCreativeIconHolder");
+                holder.SetActive(false);
+                instance = UnityEngine.Object.Instantiate(prefab, holder.transform, false);
                 instance.name = "VHCreativeIcon_" + prefab.name;
+                if (!StripToVisual(instance)) return null;
+                foreach (var extra in instance.GetComponentsInChildren<Piece>(true))
+                    if (extra) UnityEngine.Object.DestroyImmediate(extra);
+                foreach (var col in instance.GetComponentsInChildren<Collider>(true))
+                    if (col) col.enabled = false;
+                instance.transform.SetParent(null, false);
                 instance.transform.position = new Vector3(0f, -8000f, 0f);
-                foreach (var behaviour in instance.GetComponentsInChildren<MonoBehaviour>(true))
-                {
-                    if (!behaviour) continue;
-                    // Animator is Behaviour, not MonoBehaviour; leave it for skinned meshes.
-                    UnityEngine.Object.DestroyImmediate(behaviour);
-                }
+                if (!instance.activeSelf) instance.SetActive(true);
 
                 var bounds = EncapsulateRenderBounds(instance);
                 if (bounds.size.sqrMagnitude < 0.0001f)
@@ -536,6 +663,7 @@ namespace ValheimAdminMenu
                 }
                 if (camObject) UnityEngine.Object.Destroy(camObject);
                 if (instance) UnityEngine.Object.Destroy(instance);
+                if (holder) UnityEngine.Object.Destroy(holder);
                 ZNetView.m_forceDisableInit = prior;
             }
         }
@@ -651,7 +779,7 @@ namespace ValheimAdminMenu
                 return true;
             if (name.StartsWith("vfx_", StringComparison.Ordinal) || name.StartsWith("sfx_", StringComparison.Ordinal)
                 || name.StartsWith("fx_", StringComparison.Ordinal) || name.StartsWith("_", StringComparison.Ordinal)
-                || name.EndsWith("_aoe", StringComparison.Ordinal))
+                || name.EndsWith("_aoe", StringComparison.OrdinalIgnoreCase))
                 return true;
             if (IgnoredNames.Contains(name)) return true;
             // Skip prefabs already on a piece table (leave vanilla hammer pieces alone).
@@ -890,6 +1018,21 @@ namespace ValheimAdminMenu
             try { CreativeHammer.Place(__instance, recipe, pos, rot); }
             catch (Exception ex) { Plugin.Instance.Report(ex.Message); }
             return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Player), "SetupPlacementGhost")]
+    internal static class CreativeGhostVisiblePatch
+    {
+        private static void Postfix(Player __instance)
+        {
+            if (!CreativeHammer.Enabled || __instance != Player.m_localPlayer) return;
+            try
+            {
+                var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
+                if (ghost && ghost.GetComponent<CreativeRecipe>()) CreativeHammer.EnsureGhostVisible(ghost);
+            }
+            catch (Exception ex) { AppLog.Warning("Creative ghost preview failed: " + ex.Message); }
         }
     }
 

@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
-using Splatform;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace ValheimAdminMenu
 {
     /// <summary>
-    /// Hold-place on walls/floors/beams/roofs only. Quick click places normally;
-    /// hold past a short delay (or drag along the snap axis) to stretch a snap-stepped line.
+    /// Hold-place on walls/floors/beams/roofs only. The click always places through vanilla; holding past a short delay
+    /// (or aiming along the row, or up/down for walls and pillars) stretches a snap-stepped line from that first piece.
     /// </summary>
     internal static class DragBuilding
     {
@@ -21,6 +20,8 @@ namespace ValheimAdminMenu
 
         private const float HoldDelay = 0.2f;
         private const float MoveStartFrac = 0.45f;
+        // Arm/hold older than this with Attack released means Tick stalled; never let it block vanilla placing.
+        private const float StaleAfter = 1f;
 
         private static readonly List<Vector3> positions = new List<Vector3>();
         private static readonly List<Quaternion> rotations = new List<Quaternion>();
@@ -33,15 +34,23 @@ namespace ValheimAdminMenu
         private static bool holding;
         private static bool armed;
         private static float armedAt;
+        private static float lastTickAt;
         private static Vector3 startPos;
         private static Quaternion startRot;
         private static Vector3 stepDir;
         private static float stepLen;
         private static int lastCount = -1;
         private static int lastSign = 1;
+        // Up to two line axes: snap-stepped horizontal and (walls/pillars) vertical. Index 0 = horizontal.
+        private static readonly Vector3[] axisDir = new Vector3[2];
+        private static readonly float[] axisLen = new float[2];
+        private static readonly bool[] axisOn = new bool[2];
+        private static int axis = -1;
+        private static int lastAxis = -1;
 
         internal static void Tick(Player player)
         {
+            lastTickAt = Time.unscaledTime;
             if (!player || player != Player.m_localPlayer)
             {
                 Cancel();
@@ -70,20 +79,18 @@ namespace ValheimAdminMenu
 
             if (armed && !holding)
             {
+                // Quick click: vanilla already placed the piece; nothing more to do.
                 if (attackUp || !attackHeld)
                 {
-                    PlaceArmedSingle(player);
-                    ClearArm();
+                    Cancel();
                     return;
                 }
                 float held = Time.unscaledTime - armedAt;
-                Vector3 tip = AimPoint(player, startPos);
-                float along = Mathf.Abs(Vector3.Dot(tip - startPos, stepDir));
-                if (held >= HoldDelay || along >= stepLen * MoveStartFrac)
-                {
+                bool moved = false;
+                for (int a = 0; a < axisOn.Length; a++)
+                    if (axisOn[a] && Mathf.Abs(AxisParam(player, a)) >= axisLen[a] * MoveStartFrac) moved = true;
+                if (held >= HoldDelay || moved)
                     BeginFromArm();
-                    ClearArm();
-                }
                 return;
             }
 
@@ -107,20 +114,18 @@ namespace ValheimAdminMenu
             UpdateDrag(player);
         }
 
-        /// <summary>Called from TryPlacePiece: arm drag instead of placing when piece is drag-eligible.</summary>
-        private static bool TryArm(Player player, Piece piece)
+        /// <summary>After vanilla placed <paramref name="piece"/>: remember its pose so a held click can extend a line.</summary>
+        private static void TryArm(Player player, Piece piece)
         {
-            if (!Enabled || !player || !piece || holding || armed) return false;
-            if (Release250.PastePreviewActive) return false;
-            if (!Release250.IsBuildHammer(player)) return false;
-            if (!IsDragSupported(piece)) return false;
+            if (!Enabled || !player || !piece || holding || armed) return;
+            if (Release250.PastePreviewActive) return;
+            if (!Release250.IsBuildHammer(player)) return;
+            if (!IsDragSupported(piece)) return;
             var ghost = Reflection.Get<GameObject>(player, "m_placementGhost");
-            if (!ghost || !ghost.activeInHierarchy) return false;
-
-            PlacementSnap.AlignGhost(ghost);
-            if (!TryBuildStep(ghost, out stepDir, out stepLen)) return false;
+            if (!ghost || !ghost.activeInHierarchy) return;
+            if (!TryBuildAxes(ghost)) return;
             var prefab = ResolvePrefab(piece);
-            if (!prefab) return false;
+            if (!prefab) return;
 
             dragPiece = piece;
             dragPrefab = prefab;
@@ -130,84 +135,71 @@ namespace ValheimAdminMenu
             armedAt = Time.unscaledTime;
             lastCount = -1;
             lastSign = 1;
-            return true;
+            axis = axisOn[0] ? 0 : 1;
+            lastAxis = -1;
+            stepDir = axisDir[axis];
+            stepLen = axisLen[axis];
         }
 
         private static void BeginFromArm()
         {
-            if (!dragPrefab || !dragPiece) return;
+            armed = false;
+            if (!dragPrefab || !dragPiece) { Cancel(); return; }
             holding = true;
             Active = true;
             RebuildLine(1, 1);
         }
 
-        private static void ClearArm()
-        {
-            armed = false;
-            armedAt = 0f;
-            if (!holding)
-            {
-                dragPiece = null;
-                dragPrefab = null;
-            }
-        }
-
-        private static void PlaceArmedSingle(Player player)
-        {
-            if (!player || !dragPiece || !dragPrefab) return;
-            Vector3 pos = startPos;
-            Quaternion rot = startRot;
-            var ghost = Reflection.Get<GameObject>(player, "m_placementGhost");
-            if (ghost && ghost.activeInHierarchy)
-            {
-                pos = ghost.transform.position;
-                rot = ghost.transform.rotation;
-            }
-            try
-            {
-                var recipe = dragPiece.GetComponent<CreativeRecipe>();
-                if (recipe && CreativeHammer.Enabled && CreativeHammer.UsingHammer(player))
-                    CreativeHammer.Place(player, recipe, pos, rot);
-                else
-                {
-                    TerrainModifier.SetTriggerOnPlaced(true);
-                    var obj = Object.Instantiate(dragPrefab, pos, rot);
-                    TerrainModifier.SetTriggerOnPlaced(false);
-                    var view = obj.GetComponent<ZNetView>();
-                    if (view && view.IsValid() && !view.IsOwner()) view.ClaimOwnership();
-                    var piece = obj.GetComponent<Piece>();
-                    if (piece)
-                    {
-                        try
-                        {
-                            long id = player.GetPlayerID();
-                            PlatformUserID platform = default;
-                            try { platform = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch { }
-                            piece.SetCreator(id, platform);
-                        }
-                        catch { }
-                    }
-                    try { obj.GetComponent<WearNTear>()?.OnPlaced(); } catch { }
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Instance?.Report(ex.Message);
-            }
-        }
-
         private static void UpdateDrag(Player player)
         {
-            if (!dragPiece || stepLen < 0.01f) { Cancel(); return; }
+            if (!dragPiece || axis < 0) { Cancel(); return; }
 
-            Vector3 tip = AimPoint(player, startPos);
-            Vector3 delta = tip - startPos;
-            float along = Vector3.Dot(delta, stepDir);
-            int sign = along >= 0f ? 1 : -1;
-            float dist = Mathf.Abs(along);
-            int count = Mathf.Clamp(Mathf.RoundToInt(dist / stepLen) + 1, 1, MaxPieces);
-            if (count == lastCount && sign == lastSign) return;
+            // Pick the axis the aim actually runs along: whichever line would get more pieces. Sticky so it doesn't flicker.
+            var counts = new int[2];
+            var signs = new int[2];
+            for (int a = 0; a < axisOn.Length; a++)
+            {
+                if (!axisOn[a]) continue;
+                float t = AxisParam(player, a);
+                signs[a] = t >= 0f ? 1 : -1;
+                counts[a] = Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(t) / axisLen[a]) + 1, 1, MaxPieces);
+            }
+            int other = 1 - axis;
+            if (axisOn[other] && (counts[other] >= counts[axis] + 2 || (counts[axis] <= 1 && counts[other] > 1)))
+                axis = other;
+            stepDir = axisDir[axis];
+            stepLen = axisLen[axis];
+            int count = counts[axis];
+            int sign = signs[axis];
+            if (count == lastCount && sign == lastSign && axis == lastAxis) return;
+            lastAxis = axis;
             RebuildLine(count, sign);
+        }
+
+        /// <summary>
+        /// Signed distance along axis <paramref name="a"/> from the start piece to where the camera ray passes closest.
+        /// Works when aiming at open sky (vertical); falls back to the ground hit when the ray runs parallel to the axis.
+        /// </summary>
+        private static float AxisParam(Player player, int a)
+        {
+            Vector3 u = axisDir[a];
+            var cam = GameCamera.instance ? GameCamera.instance.transform : Camera.main?.transform;
+            if (!cam) return 0f;
+            Vector3 o = cam.position, r = cam.forward;
+            Vector3 w0 = o - startPos;
+            float b = Vector3.Dot(r, u), d = Vector3.Dot(r, w0), e = Vector3.Dot(u, w0);
+            float denom = 1f - b * b;
+            float t;
+            if (denom < 0.02f)
+                t = Vector3.Dot(AimPoint(player, startPos) - startPos, u);
+            else
+            {
+                float s = (b * e - d) / denom;
+                // Closest point behind the camera means the ray leaves the line; use the camera's own projection.
+                t = s < 0f ? e : (e - b * d) / denom;
+            }
+            float limit = axisLen[a] * MaxPieces;
+            return Mathf.Clamp(t, -limit, limit);
         }
 
         private static Vector3 AimPoint(Player player, Vector3 fallback)
@@ -235,6 +227,7 @@ namespace ValheimAdminMenu
             return best < float.MaxValue ? hit : fallback;
         }
 
+        /// <summary>Index 0 is the piece vanilla already placed; ghosts and commits cover 1..count-1.</summary>
         private static void RebuildLine(int count, int sign)
         {
             lastCount = count;
@@ -248,7 +241,7 @@ namespace ValheimAdminMenu
                 Vector3 pos = startPos + step * i;
                 positions.Add(pos);
                 rotations.Add(startRot);
-                SpawnGhost(pos, startRot);
+                if (i > 0) SpawnGhost(pos, startRot);
             }
 
             var player = Player.m_localPlayer;
@@ -264,50 +257,41 @@ namespace ValheimAdminMenu
         private static void Commit(Player player)
         {
             if (!holding) return;
-            holding = false;
-            Active = false;
-            if (positions.Count == 0 || !dragPrefab)
-            {
-                ClearGhosts();
-                dragPiece = null;
-                dragPrefab = null;
-                return;
-            }
-
+            var piece = dragPiece;
+            int total = positions.Count;
             int placed = 0;
-            for (int i = 0; i < positions.Count; i++)
+            string stopped = null;
+            for (int i = 1; i < total && piece; i++)
             {
-                try
-                {
-                    TerrainModifier.SetTriggerOnPlaced(true);
-                    var obj = Object.Instantiate(dragPrefab, positions[i], rotations[i]);
-                    TerrainModifier.SetTriggerOnPlaced(false);
-                    var view = obj.GetComponent<ZNetView>();
-                    if (view && view.IsValid() && !view.IsOwner()) view.ClaimOwnership();
-                    var piece = obj.GetComponent<Piece>();
-                    if (piece)
-                    {
-                        try
-                        {
-                            long id = player.GetPlayerID();
-                            PlatformUserID platform = default;
-                            try { platform = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch { }
-                            piece.SetCreator(id, platform);
-                        }
-                        catch { }
-                    }
-                    try { obj.GetComponent<WearNTear>()?.OnPlaced(); } catch { }
-                    placed++;
-                }
-                catch { }
+                stopped = PlaceLinePiece(player, piece, positions[i], rotations[i]);
+                if (stopped != null) break;
+                placed++;
             }
-            ClearGhosts();
-            dragPiece = null;
-            dragPrefab = null;
-            positions.Clear();
-            rotations.Clear();
-            lastCount = -1;
-            if (Plugin.Instance) Plugin.Instance.Report("Drag placed " + placed + " pieces.");
+            Cancel();
+            if (!Plugin.Instance) return;
+            string msg = "Drag placed " + (placed + 1) + " pieces.";
+            if (stopped != null) msg += " Stopped: " + stopped;
+            Plugin.Instance.Report(msg);
+        }
+
+        /// <summary>Same rules as a vanilla click (ward, cost); null on success, else the reason it stopped.</summary>
+        private static string PlaceLinePiece(Player player, Piece piece, Vector3 pos, Quaternion rot)
+        {
+            try
+            {
+                if (!PrivateArea.CheckAccess(pos, 0f, false, false)) return "ward";
+                bool noCost = player.NoCostCheat();
+                if (!noCost && !player.HaveRequirements(piece, Player.RequirementMode.CanBuild)) return "missing materials";
+                player.PlacePiece(piece, pos, rot, false);
+                if (!noCost && ZoneSystem.instance && !ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()))
+                    player.ConsumeResources(piece.m_resources, 0);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warning("Drag place failed: " + ex.Message);
+                return ex.Message;
+            }
         }
 
         internal static void Cancel()
@@ -323,6 +307,8 @@ namespace ValheimAdminMenu
             rotations.Clear();
             lastCount = -1;
             lastSign = 1;
+            axis = -1;
+            lastAxis = -1;
         }
 
         private static void SpawnGhost(Vector3 pos, Quaternion rot)
@@ -370,6 +356,39 @@ namespace ValheimAdminMenu
             snapScratch.Clear();
             try { piece.GetSnapPoints(snapScratch); } catch { return false; }
             return snapScratch.Count >= 2;
+        }
+
+        /// <summary>Horizontal step from the longest flat snap pair; vertical step from a stacked pair (wall/pillar edge).</summary>
+        private static bool TryBuildAxes(GameObject ghost)
+        {
+            axisOn[0] = TryBuildStep(ghost, out axisDir[0], out axisLen[0]);
+            axisOn[1] = TryVerticalStep(ghost, out axisLen[1]);
+            axisDir[1] = Vector3.up;
+            return axisOn[0] || axisOn[1];
+        }
+
+        private static bool TryVerticalStep(GameObject ghost, out float length)
+        {
+            length = 0f;
+            var piece = ghost ? ghost.GetComponent<Piece>() : null;
+            if (!piece) return false;
+            snapScratch.Clear();
+            try { piece.GetSnapPoints(snapScratch); } catch { return false; }
+            for (int i = 0; i < snapScratch.Count; i++)
+            {
+                if (!snapScratch[i]) continue;
+                for (int j = i + 1; j < snapScratch.Count; j++)
+                {
+                    if (!snapScratch[j]) continue;
+                    Vector3 d = snapScratch[j].position - snapScratch[i].position;
+                    float vert = Mathf.Abs(d.y);
+                    d.y = 0f;
+                    // Straight up an edge only; sloped pairs (roofs) would stack crooked.
+                    if (vert < 0.4f || vert > 12f || d.magnitude > vert * 0.35f) continue;
+                    if (vert > length) length = vert;
+                }
+            }
+            return length > 0.01f;
         }
 
         private static bool TryBuildStep(GameObject ghost, out Vector3 dir, out float length)
@@ -430,26 +449,41 @@ namespace ValheimAdminMenu
             return ZNetScene.instance.GetPrefab(name) ?? piece.gameObject;
         }
 
+        private static bool Stale()
+        {
+            if (!armed && !holding) return false;
+            bool attackHeld = Input.GetMouseButton(0) || ZInput.GetButton("Attack");
+            // Tick stopped running (Release250.Tick threw) or the button is long released.
+            if (Time.unscaledTime - lastTickAt > StaleAfter) return true;
+            return !attackHeld && Time.unscaledTime - armedAt > StaleAfter;
+        }
+
         [HarmonyPatch(typeof(Player), "TryPlacePiece")]
         private static class TryPlacePatch
         {
             [HarmonyPriority(Priority.First)]
-            private static bool Prefix(Player __instance, Piece piece, ref bool __result)
+            private static bool Prefix(Player __instance, ref bool __result)
             {
-                if (!Enabled || __instance != Player.m_localPlayer || !piece) return true;
-                if (holding || armed)
+                if (__instance != Player.m_localPlayer) return true;
+                if (Stale()) Cancel();
+                if (!Enabled) return true;
+                // While a line is stretched, the release commits it; don't let vanilla drop extra pieces.
+                if (holding)
                 {
                     __result = false;
                     return false;
                 }
-                if (!Input.GetMouseButton(0) && !ZInput.GetButton("Attack")) return true;
-                if (!IsDragSupported(piece)) return true;
-                if (TryArm(__instance, piece))
-                {
-                    __result = false;
-                    return false;
-                }
+                // A fresh press replaces any pending arm.
+                if (armed) Cancel();
                 return true;
+            }
+
+            [HarmonyPriority(Priority.Last)]
+            private static void Postfix(Player __instance, Piece piece, bool __result)
+            {
+                if (!__result || !Enabled || __instance != Player.m_localPlayer || !piece) return;
+                if (!Input.GetMouseButton(0) && !ZInput.GetButton("Attack")) return;
+                TryArm(__instance, piece);
             }
         }
 

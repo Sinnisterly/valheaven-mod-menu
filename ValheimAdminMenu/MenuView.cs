@@ -50,7 +50,8 @@ namespace ValheimAdminMenu
         private MenuHover hovered;
         private float hoverAt;
         private string hoverText;
-        private bool rebuild, needsLayout, restoreScroll;
+        private bool rebuild, needsLayout, restoreScroll, openLogged, sizeChecked;
+        private int openedFrame;
         private float restoreScrollValue = 1f;
         private int builtScrollKey = -1;
         private readonly Dictionary<int, float> scrollMemory = new Dictionary<int, float>();
@@ -109,9 +110,35 @@ namespace ValheimAdminMenu
             root.SetActive(true);
             AttachInput();
             BuildPage();
+            // Drive the overlay rect to screen size first; a fresh root still reports its 100x100 default.
+            Canvas.ForceUpdateCanvases();
             FitWindow();
             ClearHover();
             Canvas.ForceUpdateCanvases();
+            openedFrame=Time.frameCount;
+            sizeChecked=false;
+            // DX11 "menu shows nothing" reports: log the visibility state once so logs can tell host vs canvas apart.
+            if(!openLogged){openLogged=true;AppLog.Info("Menu opened. "+DescribeVisibility());}
+        }
+        internal string DescribeVisibility()
+        {
+            var size=canvasRect?canvasRect.rect.size:Vector2.zero;
+            string display;
+            try{display=Display.main.renderingWidth+"x"+Display.main.renderingHeight;}catch{display="?";}
+            return "GFX "+SystemInfo.graphicsDeviceType+" / "+Screen.fullScreenMode
+                +", screen "+Screen.width+"x"+Screen.height+", display "+display
+                +", canvas "+(canvas?(canvas.enabled+" "+canvas.renderMode+" scale "+canvas.scaleFactor.ToString("0.###")):"missing")
+                +", rect "+size.x.ToString("0")+"x"+size.y.ToString("0")
+                +", root "+(root?root.activeInHierarchy.ToString():"missing")
+                +", window "+(window?(window.localScale.x.ToString("0.###")+" @ "+window.anchoredPosition):"missing");
+        }
+        private Vector2 CanvasSize()
+        {
+            var size=canvasRect.rect.size;
+            if(size.x>=64f && size.y>=64f)return size;
+            // Overlay rect can lag at 0 (seen around DX11 exclusive); Screen is the same space before scaling.
+            float scale=canvas && canvas.scaleFactor>.01f?canvas.scaleFactor:1f;
+            return new Vector2(Screen.width/scale,Screen.height/scale);
         }
         private void EnsureCanvas()
         {
@@ -197,6 +224,12 @@ namespace ValheimAdminMenu
             }
             if(rebuild){BuildPage();rebuild=false;}
             FitWindow();
+            if(!sizeChecked && Time.frameCount-openedFrame>30)
+            {
+                sizeChecked=true;
+                var size=canvasRect.rect.size;
+                if(size.x<64f || size.y<64f)AppLog.Warning("Menu canvas still has no size 30 frames after opening. "+DescribeVisibility());
+            }
             if(!string.Equals(statusText.text, app.Status, StringComparison.Ordinal)) statusText.text=app.Status;
             if(Time.unscaledTime>=refreshAt)
             {
@@ -280,9 +313,9 @@ namespace ValheimAdminMenu
         private void FitWindow()
         {
             if(!window || !canvasRect)return;
-            var screen=canvasRect.rect.size;
-            // First overlay frames (esp. DX11 exclusive) can report a zero canvas; wait rather than park the window off-screen.
-            if(screen.x<64f || screen.y<64f)return;
+            var screen=CanvasSize();
+            // No usable size at all: keep the window on-screen at 1:1 instead of leaving a stale scale/position.
+            if(screen.x<64f || screen.y<64f){window.localScale=Vector3.one;window.anchoredPosition=new Vector2(8,-8);return;}
             // Don't rescale mid-drag (slider/drag keep their transform until release).
             if(!Input.GetMouseButton(0) || appliedScale==0)
                 appliedScale=Mathf.Max(.35f,Mathf.Min(app.UiScale,(screen.x-32)/Width,(screen.y-32)/Height));

@@ -63,7 +63,7 @@ namespace ValheimAdminMenu
         private float magnetAt, originalCamMax = -1, originalBoatMax = -1, originalFov = -1;
         private float lastCameraDistance = 1, lastBoatCameraDistance = 1, lastFovScale = 1;
         private float mistScanAt, cartScanAt, cartMassAt;
-        private float foodAt, nearFireAt, restedAt, freezeAt, wetAt, guardianHoldAt;
+        private float foodAt, nearFireAt, restedAt, freezeAt, wetAt, guardianHoldAt, release250WarnAt;
         private float lastWindAngle = float.NaN;
         private bool windOwned;
         private bool hudHiddenByUs;
@@ -171,7 +171,16 @@ namespace ValheimAdminMenu
             ApplyCart(p);
             ApplyCamera();
             ApplyHud();
-            try { Release250.Tick(); } catch { }
+            try { Release250.Tick(); }
+            catch (Exception ex)
+            {
+                // Silent failures here once left drag armed and blocked all placing; keep it visible but quiet.
+                if (now >= release250WarnAt)
+                {
+                    release250WarnAt = now + 10f;
+                    AppLog.Warning("Build tools tick failed: " + ex.GetBaseException().Message);
+                }
+            }
             try { BowAim.TickPredict(); }
             catch { BowAim.ClearPredictMarker(); }
             try { BowAim.TickMeleeLock(); }
