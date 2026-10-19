@@ -22,6 +22,8 @@ namespace ValheimAdminMenu
         public bool autoSave = true, rememberPlayer, tooltips = true, blockGameInputs = true;
         /// <summary>True = collapsible section dropdowns; false = flat full list.</summary>
         public bool menuSectionFolds = true;
+        /// <summary>AppLog Debug level (Settings > Diagnostics).</summary>
+        public bool verboseLog;
         public float scale = 1, windowX = -1, windowY = -1;
         public bool esp, autoPin, espDistance = true, espBackground, espOutline = true, espAvoidOverlap = true, espHideInMenu = true, espContainerCount = true, espContainerItems;
         public int espContainerLines = 64;
@@ -188,7 +190,9 @@ namespace ValheimAdminMenu
         internal void Load()
         {
             var loaded = new SettingsData { version = 1, hotkey = (int)app.Hotkey, scale = app.UiScale };
-            if (File.Exists(PathName)) JsonUtility.FromJsonOverwrite(File.ReadAllText(PathName), loaded);
+            bool exists = File.Exists(PathName);
+            if (exists) JsonUtility.FromJsonOverwrite(File.ReadAllText(PathName), loaded);
+            AppLog.Info("Settings", exists ? "Loaded " + PathName + " (file v" + loaded.version + ")" : "No settings file at " + PathName + "; defaults");
             if (loaded.version < 2) { loaded.version = 2; loaded.windowX = loaded.windowY = -1; }
             if (loaded.version < 3) loaded.version = 3;
             if (loaded.version < 4)
@@ -241,6 +245,7 @@ namespace ValheimAdminMenu
         internal void Apply()
         {
             Data.Validate(); app.Hotkey = (KeyCode)Data.hotkey; app.UiScale = Data.scale;
+            AppLog.Verbose = Data.verboseLog;
             MenuLanguage.ApplyPreference(Data.language);
             app.Menu.SetPosition(Data.windowX,Data.windowY);
             app.Overlay.Enabled = Data.esp; app.Overlay.AutoPin = Data.autoPin; app.Overlay.Radius = Data.espRadius;
@@ -268,7 +273,28 @@ namespace ValheimAdminMenu
             Release250.FarmHealRadius = Data.farmHealRadius;
             Release250.MinimapZoom = Data.minimapZoom;
             Release250.LoadVfxPrefs(Data.weaponVfxId, Data.feetVfxId, Data.vfxSelectedId);
+            ApplyBuildTools();
             PendingPlayer = true; CaptureCharacterState = false; app.Overlay.Clear();
+        }
+        /// <summary>
+        /// Build tools, placement HUD and bag/stack sizes: not per-character, and CaptureFromRuntime saves them on every
+        /// save. Applying them only on spawn let a main-menu save (or startup) write the "off" runtime defaults over the file.
+        /// </summary>
+        private void ApplyBuildTools()
+        {
+            Release250.PasteLevelGround=Data.pasteLevelGround;Release250.PasteLevelPerPiece=Data.pasteLevelPerPiece;Release250.LevelOnPlace=Data.levelOnPlace;Release250.PasteFeather=Data.pasteFeather;
+            Release250.AutoPastePreview=Data.autoPastePreview;Release250.PasteSnapToGround=Data.pasteSnapToGround;Release250.PasteAnchorSnap=Data.pasteAnchorSnap;Release250.ApplyTerrainProfile=Data.applyTerrainProfile;
+            FreeBuildRotation.Enabled=Data.freeBuildRotation;FreeBuildRotation.LocalFrame=Data.freeBuildRotationLocal;FreeBuildRotation.SnapDivisions=Mathf.Clamp(Data.rotationSnapDivisions,2,256);
+            PlacementSnap.UniversalSnap=Data.universalSnap;
+            DragBuilding.Enabled=Data.dragBuilding;DragBuilding.MaxPieces=Mathf.Clamp(Data.dragMaxPieces,10,500);
+            PlacementHud.Enabled=Data.placementHud;PlacementHud.ShowRotation=Data.hudRotation;PlacementHud.ShowAxisStep=Data.hudAxisStep;PlacementHud.ShowPieceCount=Data.hudPieceCount;
+            PlacementHud.ShowLockState=Data.hudLockState;PlacementHud.ShowGroundSnap=Data.hudGroundSnap;PlacementHud.ShowInTerrain=Data.hudInTerrain;PlacementHud.ShowPrefabName=Data.hudPrefabName;
+            InventoryCapacity.OverrideBagSize = Data.playerInvOverride;
+            InventoryCapacity.PlayerRows = Data.playerInvRows;
+            InventoryCapacity.PlayerExtraCols = Data.playerInvExtraCols;
+            InventoryCapacity.ChestBonusRows = Data.chestBonusRows;
+            InventoryCapacity.StackMult = Data.stackSizeMult;
+            InventoryCapacity.StackOverride = Data.stackSizeOverride;
         }
         internal void ApplyPlayer()
         {
@@ -281,6 +307,7 @@ namespace ValheimAdminMenu
         /// <summary>Push saved toggles into live feature hosts (remember-player / manual reload).</summary>
         internal void ApplyCharacterToggles()
         {
+            AppLog.Info("Settings", "Applying saved character toggles" + (Player.m_localPlayer ? "" : " (no player yet; god/ghost/fly/no-cost skipped)"));
             var f = app.Features;
             var p2 = app.Phase;
             app.Expansion.SkillXpMult=Data.skillXpMult;app.Expansion.FastTraining=Data.fastTraining||Data.skillXpMult>=24.5f;
@@ -341,29 +368,17 @@ namespace ValheimAdminMenu
             p2.SitMountAnywhere=Data.sitMountAnywhere;p2.GroundSpawnAtCrosshair=Data.groundSpawnAtCrosshair;
             p2.FreecamBuild=Data.freecamBuild;p2.MeleeTargetLock=Data.meleeTargetLock;p2.MeleeLockPlayers=Data.meleeLockPlayers;
             p2.FlyingMount=Data.flyingMount;p2.MountAnyCreature=Data.mountAnyCreature;
-            Release250.PasteLevelGround=Data.pasteLevelGround;Release250.PasteLevelPerPiece=Data.pasteLevelPerPiece;Release250.LevelOnPlace=Data.levelOnPlace;Release250.PasteFeather=Data.pasteFeather;
-            Release250.AutoPastePreview=Data.autoPastePreview;Release250.PasteSnapToGround=Data.pasteSnapToGround;Release250.PasteAnchorSnap=Data.pasteAnchorSnap;Release250.ApplyTerrainProfile=Data.applyTerrainProfile;
-            FreeBuildRotation.Enabled=Data.freeBuildRotation;FreeBuildRotation.LocalFrame=Data.freeBuildRotationLocal;FreeBuildRotation.SnapDivisions=Mathf.Clamp(Data.rotationSnapDivisions,2,256);
-            PlacementSnap.UniversalSnap=Data.universalSnap;
-            DragBuilding.Enabled=Data.dragBuilding;DragBuilding.MaxPieces=Mathf.Clamp(Data.dragMaxPieces,10,500);
-            PlacementHud.Enabled=Data.placementHud;PlacementHud.ShowRotation=Data.hudRotation;PlacementHud.ShowAxisStep=Data.hudAxisStep;PlacementHud.ShowPieceCount=Data.hudPieceCount;
-            PlacementHud.ShowLockState=Data.hudLockState;PlacementHud.ShowGroundSnap=Data.hudGroundSnap;PlacementHud.ShowInTerrain=Data.hudInTerrain;PlacementHud.ShowPrefabName=Data.hudPrefabName;
-            InventoryCapacity.OverrideBagSize = Data.playerInvOverride;
-            InventoryCapacity.PlayerRows = Data.playerInvRows;
-            InventoryCapacity.PlayerExtraCols = Data.playerInvExtraCols;
-            InventoryCapacity.ChestBonusRows = Data.chestBonusRows;
-            InventoryCapacity.StackMult = Data.stackSizeMult;
-            InventoryCapacity.StackOverride = Data.stackSizeOverride;
+            ApplyBuildTools();
             InventoryCapacity.ApplyStackSizes();
             if (InventoryCapacity.OverrideBagSize)
                 InventoryCapacity.ApplyPlayerInventory();
             if (Data.freecam && GameCamera.instance && !GameCamera.InFreeFly())
-                try { Reflection.Method(typeof(GameCamera), "ToggleFreeFly").Invoke(GameCamera.instance, null); } catch { try { GameCamera.instance.ToggleFreeFly(); } catch { } }
+                try { Reflection.Method(typeof(GameCamera), "ToggleFreeFly").Invoke(GameCamera.instance, null); } catch { try { GameCamera.instance.ToggleFreeFly(); } catch (Exception caught) { AppLog.Swallow(caught); } }
             CaptureCharacterState = true;
         }
         internal void CaptureFromRuntime()
         {
-            Data.hotkey = (int)app.Hotkey; Data.scale = app.UiScale; Data.language = MenuLanguage.Preference;
+            Data.hotkey = (int)app.Hotkey; Data.scale = app.UiScale; Data.language = MenuLanguage.Preference; Data.verboseLog = AppLog.Verbose;
             var pos = app.Menu.Position; Data.windowX = pos.x; Data.windowY = pos.y;
             var o = app.Overlay; Data.esp = o.Enabled; Data.autoPin = o.AutoPin; Data.espRadius = o.Radius; Data.espMax = o.MaxLabels; Data.categories = (bool[])o.Categories.Clone();
             Data.worldRadius = app.World.Radius; Data.brushRadius = app.World.BrushRadius; Data.brushAmount = app.World.BrushAmount; Data.square = app.World.Square;
@@ -526,14 +541,44 @@ namespace ValheimAdminMenu
             string temp = PathName + ".tmp";
             File.WriteAllText(temp, JsonUtility.ToJson(Data, true));
             if (File.Exists(PathName)) File.Replace(temp, PathName, PathName + ".bak"); else File.Move(temp, PathName);
+            AppLog.Debug("Settings", "Saved " + PathName + (CaptureCharacterState ? "" : " (character toggles not captured yet)"));
             if (notify) app.Report(L.T("toast.settings_saved"));
         }
         internal void Reset()
         {
+            AppLog.Info("Settings", "Reset to defaults");
             Data = new SettingsData();
             InventoryCapacity.Reset();
             Apply();
             app.Report(L.T("toast.defaults_restored"));
+        }
+        private static readonly SettingsData Defaults = new SettingsData();
+        /// <summary>"name=value" for every scalar setting that differs from defaults (session header / diagnostics).</summary>
+        internal string DescribeNonDefault()
+        {
+            // Capture live state into a copy: capturing into Data itself (before a player spawns) would overwrite saved values.
+            var live = Data;
+            var snapshot = new SettingsData();
+            try
+            {
+                JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(live), snapshot);
+                Data = snapshot;
+                if (app.Menu != null) CaptureFromRuntime();
+            }
+            catch (Exception ex) { AppLog.Swallow(ex); snapshot = live; }
+            finally { Data = live; }
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var field in typeof(SettingsData).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            {
+                var type = field.FieldType;
+                if (type != typeof(bool) && type != typeof(int) && type != typeof(float) && type != typeof(string)) continue;
+                if (field.Name == "version" || field.Name == "windowX" || field.Name == "windowY") continue;
+                object now = field.GetValue(snapshot), def = field.GetValue(Defaults);
+                if (Equals(now, def)) continue;
+                parts.Add(field.Name + "=" + (now is float f ? f.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : now is string s && s.Length > 40 ? s.Substring(0, 40) + "..." : now));
+            }
+            if (snapshot.featureBindIds != null && snapshot.featureBindIds.Length > 0) parts.Add("featureBinds=" + snapshot.featureBindIds.Length);
+            return parts.Count == 0 ? "none" : string.Join(", ", parts);
         }
     }
 }

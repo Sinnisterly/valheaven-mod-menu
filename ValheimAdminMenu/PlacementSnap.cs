@@ -25,7 +25,7 @@ namespace ValheimAdminMenu
             if (!piece) return;
 
             ghostSnaps.Clear();
-            try { piece.GetSnapPoints(ghostSnaps); } catch { return; }
+            try { piece.GetSnapPoints(ghostSnaps); } catch (Exception caught) { AppLog.Swallow(caught); return; }
             if (ghostSnaps.Count == 0) return;
 
             CollectNearbyPieces(ghost.transform.position, SearchRadius);
@@ -46,7 +46,7 @@ namespace ValheimAdminMenu
                     if (!other || other == piece) continue;
                     if (other.transform.IsChildOf(ghost.transform)) continue;
                     worldSnaps.Clear();
-                    try { other.GetSnapPoints(worldSnaps); } catch { continue; }
+                    try { other.GetSnapPoints(worldSnaps); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                     for (int w = 0; w < worldSnaps.Count; w++)
                     {
                         var ws = worldSnaps[w];

@@ -13,6 +13,8 @@ namespace ValheimAdminMenu
     {
         public GameObject Prefab;
         public bool ClipEverything;
+        /// <summary>World location (ZoneSystem) instead of a prefab; see CreativeLocations.</summary>
+        public string LocationName;
     }
 
     /// <summary>Injects ZNetScene prefabs into the Hammer table as free-build proxies (BetterCreative-style, no Jotunn).</summary>
@@ -93,6 +95,10 @@ namespace ValheimAdminMenu
 
             foreach (var prefab in list)
                 AddRecipe(prefab, icon);
+            var dungeons = list.Where(p => p.GetComponent<DungeonGenerator>()).Select(p => p.name + " (" + p.GetComponent<DungeonGenerator>().m_algorithm + ")").ToList();
+            int locations = AddLocationRecipes(icon);
+            AppLog.Info("Creative", "Catalog: " + recipes.Count + " recipes from " + list.Count + " prefabs and " + locations + " world locations; "
+                + dungeons.Count + " dungeon generators: " + string.Join(", ", dungeons));
 
             // Vanilla only makes 9 category buckets; custom ids start at Max. Without growing, UpdateAvailable throws and hammer sticks in repair.
             EnsureTableCapacity(table, nextCategoryId);
@@ -182,6 +188,11 @@ namespace ValheimAdminMenu
                 throw new InvalidOperationException("Enable Hammer all prefabs and equip the hammer.");
             if (!PrivateArea.CheckAccess(pos, 0, true, true))
                 throw new InvalidOperationException("Placement is blocked by a ward.");
+            if (recipe && !string.IsNullOrEmpty(recipe.LocationName))
+            {
+                CreativeLocations.Place(player, recipe.LocationName, pos, rot);
+                return;
+            }
             if (!recipe || !recipe.Prefab)
                 throw new InvalidOperationException("Missing prefab.");
 
@@ -219,13 +230,13 @@ namespace ValheimAdminMenu
                     if (zdo != null)
                     {
                         zdo.Persistent = true;
-                        try { zdo.Set(ZDOVars.s_spawnPoint, obj.transform.position); } catch { }
+                        try { zdo.Set(ZDOVars.s_spawnPoint, obj.transform.position); } catch (Exception caught) { AppLog.Swallow(caught); }
                         try
                         {
                             if (zdo.GetLong(ZDOVars.s_spawnTime, 0L) == 0L && ZNet.instance != null)
                                 zdo.Set(ZDOVars.s_spawnTime, ZNet.instance.GetTime().Ticks);
                         }
-                        catch { }
+                        catch (Exception caught) { AppLog.Swallow(caught); }
                     }
                 }
                 else
@@ -238,8 +249,8 @@ namespace ValheimAdminMenu
             if (view && view.IsValid())
             {
                 PlatformUserID platformUser = default;
-                try { platformUser = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch { }
-                try { piece.SetCreator(player.GetPlayerID(), platformUser); } catch { }
+                try { platformUser = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch (Exception caught) { AppLog.Swallow(caught); }
+                try { piece.SetCreator(player.GetPlayerID(), platformUser); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             obj.GetComponent<WearNTear>()?.OnPlaced();
 
@@ -249,21 +260,64 @@ namespace ValheimAdminMenu
                 if (placed != null)
                     foreach (var p in placed) p?.OnPlaced();
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
 
             ApplyCreatureBrain(obj);
-            AppLog.Info("Creative placed " + prefabName + " at " + obj.transform.position.ToString("F1") + ".");
-            if (Plugin.Instance) Plugin.Instance.StartCoroutine(VerifyPlaced(obj, prefabName, DescribeScripts(obj)));
+            var spawner = obj.GetComponent<CreatureSpawner>();
+            if (spawner) KeepPlacedSpawner(spawner, prefabName);
+            var dungeon = obj.GetComponent<DungeonGenerator>();
+            if (dungeon) CreativeDungeon.Build(dungeon, prefabName, rot);
+            // Horizontal: loading is by zone, so a dungeon 5000 m up is still "here".
+            var offset = obj.transform.position - player.transform.position;
+            offset.y = 0f;
+            float away = offset.magnitude;
+            AppLog.Info("Creative placed " + prefabName + " at " + obj.transform.position.ToString("F1") + (away > 60f ? " (" + away.ToString("F0") + " m from you)" : "") + ".");
+            // ZNetScene unloads instances outside the active zones (~100+ m); the ZDO stays and loads when you get there.
+            if (away > 120f) AppLog.Warning("Creative", prefabName + " landed " + away.ToString("F0") + " m away, outside the loaded area; it unloads now and reappears there when you get close.");
+            int id = obj.GetInstanceID();
+            lock (Recent) { if (Recent.Count > 64) Recent.Clear(); Recent[id] = prefabName; }
+            if (Plugin.Instance) Plugin.Instance.StartCoroutine(VerifyPlaced(obj, id, prefabName, DescribeScripts(obj), away > 120f));
+        }
+
+        // Just-placed objects, so CreativeDestroyTracePatch can name whatever destroys one in its first seconds.
+        private static readonly Dictionary<int, string> Recent = new Dictionary<int, string>();
+        internal static bool TryRecent(GameObject go, out string prefabName)
+        {
+            prefabName = null;
+            lock (Recent) return Recent.Count > 0 && go && Recent.TryGetValue(go.GetInstanceID(), out prefabName);
+        }
+
+        /// <summary>
+        /// Vanilla CreatureSpawner deletes itself on its first tick when the Location around it lists its spawn group in
+        /// m_blockSpawnGroups (dungeon/tower variants). A placed spawner is deliberate: pre-mark the location as checked
+        /// (level overrides still apply). Placement and, for creator-stamped spawners after reload, CreativeSpawnerKeepPatch.
+        /// </summary>
+        internal static void KeepPlacedSpawner(CreatureSpawner spawner, string prefabName)
+        {
+            try
+            {
+                var loc = Location.GetLocation(spawner.transform.position);
+                Reflection.Set(spawner, "m_location", loc);
+                Reflection.Set(spawner, "m_checkedLocation", true);
+                bool blocked = loc && loc.m_blockSpawnGroups != null && loc.m_blockSpawnGroups.Contains(spawner.m_spawnGroupID);
+                if (blocked)
+                    AppLog.Info("Creative", "Kept " + prefabName + ": location " + Utils.GetPrefabName(loc.gameObject) + " blocks spawn group " + spawner.m_spawnGroupID + ", which makes vanilla delete the spawner.");
+                else
+                    AppLog.Debug("Creative", prefabName + " spawner: group " + spawner.m_spawnGroupID + ", location " + (loc ? Utils.GetPrefabName(loc.gameObject) : "none") + ", interval " + spawner.m_spawnInterval + "s, day " + spawner.m_spawnAtDay + ", night " + spawner.m_spawnAtNight);
+            }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         /// <summary>Report placements that vanish or show nothing, with their scripts, so failing prefabs can be named.</summary>
-        private static IEnumerator VerifyPlaced(GameObject obj, string prefabName, string scripts)
+        private static IEnumerator VerifyPlaced(GameObject obj, int id, string prefabName, string scripts, bool far)
         {
             yield return new WaitForSecondsRealtime(2f);
+            lock (Recent) Recent.Remove(id);
             string problem = null;
-            if (!obj) problem = "removed itself right after placing";
+            if (!obj) problem = far ? "unloaded (placed outside the loaded area)" : "removed itself right after placing (no ZNetScene.Destroy trace above = direct Object.Destroy)";
             else if (!obj.activeInHierarchy) problem = "was hidden right after placing";
-            else if (!HasVisibleGeometry(obj, includeParticles: true)) problem = "placed but has nothing visible";
+            // Generators: camps spawn their visible pieces as separate network objects, not children.
+            else if (!obj.GetComponent<DungeonGenerator>() && !HasVisibleGeometry(obj, includeParticles: true)) problem = "placed but has nothing visible";
             if (problem == null) yield break;
             AppLog.Warning("Creative " + prefabName + " " + problem + " (scripts: " + scripts + ").");
             Plugin.Instance?.Report(prefabName + " " + problem + ". Details in Valheaven.log.");
@@ -329,6 +383,28 @@ namespace ValheimAdminMenu
                 AppLog.Info("Creative ghost " + key + " has no visible mesh (particles/scripted visuals); showing a marker cube.");
         }
 
+        /// <summary>
+        /// UpdatePlacementGhost offsets the ghost by its nearest enabled solid collider, starting from world origin. With none
+        /// (spawner visuals borrow creature colliders, which SetupPlacementGhost disables by layer) the piece lands at
+        /// 2x the aim point + 50 m up, outside the loaded area, and unloads at once. Give such ghosts a box from render bounds.
+        /// </summary>
+        internal static void EnsureGhostCollider(GameObject ghost)
+        {
+            if (!ghost) return;
+            foreach (var c in ghost.GetComponentsInChildren<Collider>())
+                if (c && c.enabled && !c.isTrigger && (!(c is MeshCollider mesh) || mesh.convex)) return;
+            var box = ghost.AddComponent<BoxCollider>();
+            var bounds = EncapsulateRenderBounds(ghost);
+            var s = ghost.transform.lossyScale;
+            if (bounds.size.sqrMagnitude > 0.0001f && Mathf.Abs(s.x * s.y * s.z) > 1e-6f)
+            {
+                box.center = ghost.transform.InverseTransformPoint(bounds.center);
+                box.size = new Vector3(bounds.size.x / Mathf.Abs(s.x), bounds.size.y / Mathf.Abs(s.y), bounds.size.z / Mathf.Abs(s.z));
+            }
+            else { box.center = new Vector3(0f, .25f, 0f); box.size = Vector3.one * .5f; }
+            AppLog.Debug("Creative", ghost.name + " ghost had no solid collider; added box " + box.size.ToString("F2") + " @ " + box.center.ToString("F2"));
+        }
+
         /// <summary>Turn on the first inactive child that carries a mesh (variants a script would normally pick).</summary>
         private static bool ActivateHiddenVisual(GameObject ghost)
         {
@@ -375,8 +451,8 @@ namespace ValheimAdminMenu
             foreach (var monster in obj.GetComponentsInChildren<MonsterAI>(true))
             {
                 if (!monster) continue;
-                try { monster.SetDespawnInDay(false); } catch { }
-                try { monster.SetEventCreature(false); } catch { }
+                try { monster.SetDespawnInDay(false); } catch (Exception caught) { AppLog.Swallow(caught); }
+                try { monster.SetEventCreature(false); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             var brains = obj.GetComponentsInChildren<BaseAI>(true);
             foreach (var ai in brains)
@@ -385,7 +461,7 @@ namespace ValheimAdminMenu
                 ai.enabled = fullAi;
                 if (fullAi)
                 {
-                    try { ai.ResetPatrolPoint(); } catch { }
+                    try { ai.ResetPatrolPoint(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
             }
 
@@ -395,25 +471,25 @@ namespace ValheimAdminMenu
             var body = character.GetComponent<Rigidbody>();
             if (body)
             {
-                try { body.linearVelocity = Vector3.zero; } catch { }
-                try { body.angularVelocity = Vector3.zero; } catch { }
+                try { body.linearVelocity = Vector3.zero; } catch (Exception caught) { AppLog.Swallow(caught); }
+                try { body.angularVelocity = Vector3.zero; } catch (Exception caught) { AppLog.Swallow(caught); }
                 body.constraints = RigidbodyConstraints.FreezeAll;
             }
-            try { character.SetHealth(character.GetMaxHealth()); } catch { }
+            try { character.SetHealth(character.GetMaxHealth()); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         /// <summary>NPC/spawner colliders fail CheckPlacementGhostVSPlayers even when the marker is green.</summary>
         internal static void ForceGhostValid(Player player)
         {
             if (!player) return;
-            try { Reflection.Set(player, "m_placementStatus", 0); } catch { }
+            try { Reflection.Set(player, "m_placementStatus", 0); } catch (Exception caught) { AppLog.Swallow(caught); }
             try
             {
                 var ghost = Reflection.Get<GameObject>(player, "m_placementGhost");
                 var piece = ghost ? ghost.GetComponent<Piece>() : null;
                 if (piece) piece.SetInvalidPlacementHeightlight(false);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         private static void AddRecipe(GameObject prefab, Sprite fallback)
@@ -456,6 +532,51 @@ namespace ValheimAdminMenu
                 table.m_pieces.Add(proxy);
             }
             finally { ZNetView.m_forceDisableInit = prior; }
+        }
+
+        /// <summary>
+        /// World locations (troll caves, burial chambers, frost caves, camps, altars...) are soft-referenced location
+        /// prefabs, not ZNetScene prefabs. One "Locations" recipe each; the ghost is a footprint disc of the exterior radius.
+        /// </summary>
+        private static int AddLocationRecipes(Sprite icon)
+        {
+            var zs = ZoneSystem.instance;
+            if (zs == null || zs.m_locations == null || zs.m_locations.Count == 0)
+            {
+                AppLog.Warning("Creative", "World locations not ready; Hammer catalog > Refresh adds them later.");
+                return 0;
+            }
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            int added = 0;
+            foreach (var zl in zs.m_locations.OrderBy(l => l?.m_prefab.Name ?? "", StringComparer.OrdinalIgnoreCase))
+            {
+                if (zl == null || !zl.m_enable || !zl.m_prefab.IsValid) continue;
+                string name = zl.m_prefab.Name;
+                if (string.IsNullOrEmpty(name) || !seen.Add(name)) continue;
+                try
+                {
+                    var proxy = new GameObject("VHCreative_Loc_" + name);
+                    proxy.transform.SetParent(root.transform, false);
+                    CreativeLocations.AddFootprint(proxy, Mathf.Max(zl.m_exteriorRadius, zl.m_interiorRadius));
+                    var piece = proxy.AddComponent<Piece>();
+                    ConfigurePlacedPiece(piece, true);
+                    piece.m_category = CategoryFor("Locations");
+                    piece.m_name = CreativeLocations.DisplayName(name);
+                    piece.m_description = name + (zl.m_interiorRadius > 0f ? " (has an interior)" : "") + ", radius " + zl.m_exteriorRadius.ToString("F0") + " m";
+                    piece.m_icon = icon;
+                    piece.m_resources = new Piece.Requirement[0];
+                    piece.m_craftingStation = null;
+                    piece.m_dlc = "";
+                    var marker = proxy.AddComponent<CreativeRecipe>();
+                    marker.LocationName = name;
+                    marker.ClipEverything = true;
+                    recipes.Add(proxy);
+                    table.m_pieces.Add(proxy);
+                    added++;
+                }
+                catch (Exception caught) { AppLog.Swallow(caught); }
+            }
+            return added;
         }
 
         /// <summary>Keep meshes/colliders for the ghost; strip gameplay. Meshless spawners get a child from the creature prefab.</summary>
@@ -503,7 +624,7 @@ namespace ValheimAdminMenu
         /// Strip everything but visuals/colliders. Reverse order + repeat passes so dependents (CharacterDrop) go before
         /// what they require (Character); one forward pass left live Humanoids in ghosts. False if any script survives.
         /// </summary>
-        private static bool StripToVisual(GameObject go)
+        internal static bool StripToVisual(GameObject go)
         {
             for (int pass = 0; pass < 8; pass++)
             {
@@ -514,7 +635,7 @@ namespace ValheimAdminMenu
                     var component = components[i];
                     if (!component || KeepForVisual(component)) continue;
                     try { UnityEngine.Object.DestroyImmediate(component); }
-                    catch { }
+                    catch (Exception caught) { AppLog.Swallow(caught); }
                     if (!component) removed = true;
                 }
                 if (!removed) break;
@@ -553,7 +674,7 @@ namespace ValheimAdminMenu
                             return drop.gameObject;
                     }
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
             return prefab;
         }
@@ -683,6 +804,18 @@ namespace ValheimAdminMenu
             return bounds;
         }
 
+        /// <summary>
+        /// Place adds a Piece at runtime, which is not saved: after a reload, creative objects whose prefab has none
+        /// (dungeons and their portals, spawners, creatures, cliffs) were invisible to hammer remove. Re-add it.
+        /// </summary>
+        internal static void RestorePiece(GameObject go)
+        {
+            var piece = go.AddComponent<Piece>();
+            ConfigurePlacedPiece(piece, false);
+            piece.m_name = FriendlyName(go);
+            AppLog.Debug("Creative", "Restored removable Piece on " + Utils.GetPrefabName(go) + " for hammer remove");
+        }
+
         private static void ConfigurePlacedPiece(Piece piece, bool clipEverything)
         {
             piece.enabled = true;
@@ -720,9 +853,10 @@ namespace ValheimAdminMenu
             return HasAny(prefab, typeof(Destructible), typeof(MineRock));
         }
 
-        private static Piece.PieceCategory CategoryFor(GameObject prefab)
+        private static Piece.PieceCategory CategoryFor(GameObject prefab) => CategoryFor(BaseCategory(prefab));
+
+        private static Piece.PieceCategory CategoryFor(string baseName)
         {
-            string baseName = BaseCategory(prefab);
             if (!pageCounts.TryGetValue(baseName, out int count)) count = 0;
             // BetterCreative: Furniture/Building already fill page 1, so overflow starts at page 2.
             if ((baseName == "Furniture" || baseName == "Building") && count == 0)
@@ -731,7 +865,10 @@ namespace ValheimAdminMenu
             pageCounts[baseName] = count + 1;
             string label = page > 1 ? baseName + " " + page : baseName;
             if (categories.TryGetValue(label, out var existing)) return existing;
+            // GetSelectedCategory treats Max (and All) as "unset" and jumps to the first tab, so a category with id Max
+            // bounced every selection in it back to Repair.
             while (table.m_categories.Contains((Piece.PieceCategory)nextCategoryId)
+                   || nextCategoryId == (int)Piece.PieceCategory.Max
                    || nextCategoryId == (int)Piece.PieceCategory.All)
                 nextCategoryId++;
             var cat = (Piece.PieceCategory)nextCategoryId++;
@@ -744,6 +881,7 @@ namespace ValheimAdminMenu
         private static string BaseCategory(GameObject prefab)
         {
             var destructible = prefab.GetComponent<Destructible>();
+            if (prefab.GetComponent<DungeonGenerator>()) return "Dungeons";
             if (HasAny(prefab, typeof(Pickable), typeof(PickableItem))) return "Pickable";
             if (HasAny(prefab, typeof(Humanoid), typeof(Character), typeof(Leviathan), typeof(RandomFlyingBird), typeof(Fish), typeof(Trader))
                 || prefab.GetComponent("Odin") || prefab.GetComponent("Valkyrie"))
@@ -808,7 +946,9 @@ namespace ValheimAdminMenu
             prefab.GetComponentInChildren<Collider>(true)
             || prefab.GetComponentInChildren<Renderer>(true)
             || prefab.GetComponent<CreatureSpawner>()
-            || prefab.GetComponent<SpawnArea>();
+            || prefab.GetComponent<SpawnArea>()
+            // Bare generators (most DG_ prefabs: no mesh until rooms are built); see CreativeDungeon.
+            || prefab.GetComponent<DungeonGenerator>();
 
         private static bool HasAny(GameObject go, params Type[] types)
         {
@@ -835,7 +975,7 @@ namespace ValheimAdminMenu
             return false;
         }
 
-        private static string FriendlyName(GameObject prefab)
+        internal static string FriendlyName(GameObject prefab)
         {
             var hover = prefab.GetComponent<HoverText>();
             if (hover && !string.IsNullOrWhiteSpace(hover.m_text)) return hover.m_text;
@@ -942,7 +1082,7 @@ namespace ValheimAdminMenu
                     __instance.SetSelected(Vector2Int.zero);
                 }
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -956,7 +1096,7 @@ namespace ValheimAdminMenu
 
             // Refresh ghost, then clear BlockedbyPlayer/Invalid from oversized NPC/spawner/cliff colliders.
             try { Reflection.Method(typeof(Player), "UpdatePlacementGhost", typeof(bool)).Invoke(__instance, new object[] { true }); }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             CreativeHammer.ForceGhostValid(__instance);
 
             var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
@@ -977,6 +1117,7 @@ namespace ValheimAdminMenu
                 }
                 catch (Exception ex)
                 {
+                    AppLog.Error("Creative", "Place at look-hit failed (" + (recipe && recipe.Prefab ? recipe.Prefab.name : "?") + ")", ex);
                     Plugin.Instance.Report(ex.Message);
                     __result = false;
                 }
@@ -991,16 +1132,17 @@ namespace ValheimAdminMenu
                     var right = Reflection.Get<ItemDrop.ItemData>(__instance, "m_rightItem");
                     if (right != null)
                     {
-                        Reflection.Method(typeof(Character), "FaceLookDirection").Invoke(__instance, null);
+                        __instance.FaceLookDirection();
                         var anim = Reflection.Get<ZSyncAnimation>(__instance, "m_zanim");
                         anim?.SetTrigger(right.m_shared.m_attack.m_attackAnimation);
                     }
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
                 __result = true;
             }
             catch (Exception ex)
             {
+                AppLog.Error("Creative", "Place at ghost failed (" + (recipe && recipe.Prefab ? recipe.Prefab.name : "?") + ")", ex);
                 Plugin.Instance.Report(ex.Message);
                 __result = false;
             }
@@ -1016,7 +1158,7 @@ namespace ValheimAdminMenu
             var recipe = piece ? piece.GetComponent<CreativeRecipe>() : null;
             if (!recipe) return true;
             try { CreativeHammer.Place(__instance, recipe, pos, rot); }
-            catch (Exception ex) { Plugin.Instance.Report(ex.Message); }
+            catch (Exception ex) { AppLog.Error("Creative", "PlacePiece redirect failed (" + (recipe.Prefab ? recipe.Prefab.name : "?") + ")", ex); Plugin.Instance.Report(ex.Message); }
             return false;
         }
     }
@@ -1030,7 +1172,7 @@ namespace ValheimAdminMenu
             try
             {
                 var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
-                if (ghost && ghost.GetComponent<CreativeRecipe>()) CreativeHammer.EnsureGhostVisible(ghost);
+                if (ghost && ghost.GetComponent<CreativeRecipe>()) { CreativeHammer.EnsureGhostVisible(ghost); CreativeHammer.EnsureGhostCollider(ghost); }
             }
             catch (Exception ex) { AppLog.Warning("Creative ghost preview failed: " + ex.Message); }
         }
@@ -1045,6 +1187,64 @@ namespace ValheimAdminMenu
             var ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost");
             if (!ghost || !ghost.GetComponent<CreativeRecipe>()) return;
             CreativeHammer.ForceGhostValid(__instance);
+        }
+    }
+
+    /// <summary>
+    /// Before vanilla's hover pick (which feeds RemovePiece and UpdatePlacement's hoveringPiece): give the aimed
+    /// creator-stamped object back its Piece (see RestorePiece). In RemovePiece itself, hoveringPiece stayed null and
+    /// UpdatePlacement threw after the remove.
+    /// </summary>
+    [HarmonyPatch(typeof(Player), "UpdateWearNTearHover")]
+    internal static class CreativeRemoveRestorePatch
+    {
+        private static int mask;
+        private static void Prefix(Player __instance)
+        {
+            if (!CreativeHammer.Enabled || __instance != Player.m_localPlayer || !CreativeHammer.UsingHammer(__instance)) return;
+            try
+            {
+                var cam = GameCamera.instance;
+                if (!cam) return;
+                // Same ray as vanilla (m_removeRayMask).
+                if (mask == 0) mask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain", "vehicle");
+                if (!Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, 50f, mask)) return;
+                if (hit.collider.GetComponentInParent<Piece>()) return;
+                var view = hit.collider.GetComponentInParent<ZNetView>();
+                var zdo = view && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null || zdo.GetLong(ZDOVars.s_creator, 0L) == 0L) return;
+                CreativeHammer.RestorePiece(view.gameObject);
+            }
+            catch (Exception caught) { AppLog.Swallow(caught); }
+        }
+    }
+
+    /// <summary>Creator-stamped spawners (placed with the creative hammer) skip vanilla's location block after a reload too.</summary>
+    [HarmonyPatch(typeof(CreatureSpawner), "UpdateSpawner")]
+    internal static class CreativeSpawnerKeepPatch
+    {
+        private static void Prefix(CreatureSpawner __instance)
+        {
+            try
+            {
+                if (Reflection.Get<bool>(__instance, "m_checkedLocation")) return;
+                var view = __instance.GetComponent<ZNetView>();
+                var zdo = view && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null || !view.IsOwner() || zdo.GetLong(ZDOVars.s_creator, 0L) == 0L) return;
+                CreativeHammer.KeepPlacedSpawner(__instance, Utils.GetPrefabName(__instance.gameObject));
+            }
+            catch (Exception caught) { AppLog.Swallow(caught); }
+        }
+    }
+
+    /// <summary>Names the caller when something destroys a just-placed creative object.</summary>
+    [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
+    internal static class CreativeDestroyTracePatch
+    {
+        private static void Prefix(GameObject go)
+        {
+            if (!CreativeHammer.TryRecent(go, out string name)) return;
+            AppLog.Warning("Creative", name + " destroyed through ZNetScene.Destroy right after placing, by:" + AppLog.Callers(1, 6));
         }
     }
 }

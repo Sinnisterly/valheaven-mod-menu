@@ -736,6 +736,11 @@ namespace ValheimAdminMenu
             ActionRow(page,L.T("settings.current_settings"),L.T("settings.current_settings.action"),()=>app.Settings.Save(),L.T("settings.current_settings.help"));
             ActionRow(page,L.T("settings.saved_settings"),L.T("settings.saved_settings.action"),()=>{app.Settings.Load();if(app.Settings.Data.rememberPlayer)app.Settings.ApplyCharacterToggles();rebuild=true;},L.T("settings.saved_settings.help"));
             DangerRow(page,L.T("settings.defaults"),L.T("settings.defaults.action"),L.T("settings.defaults.warning"),()=>{app.Settings.Reset();rebuild=true;});
+            Section(page,L.T("settings.section.diagnostics"));
+            Note(page,L.Tf("settings.diagnostics.note",AppPaths.LogPath));
+            ToggleRow(page,L.T("settings.debug_log"),()=>AppLog.Verbose,v=>{AppLog.Verbose=v;d.verboseLog=v;AppLog.Info("Settings","Debug logging "+(v?"ON":"off"));},L.T("settings.debug_log.help"));
+            ActionRow(page,L.T("settings.write_diagnostics"),L.T("settings.write_diagnostics.action"),()=>app.LogDiagnostics(),L.T("settings.write_diagnostics.help"));
+            ActionRow(page,L.T("settings.open_log_folder"),L.T("settings.open_log_folder.action"),()=>Application.OpenURL("file:///"+AppPaths.Root.Replace('\\','/')),L.T("settings.open_log_folder.help"));
             Section(page,L.T("settings.section.locales"));
             ActionRow(page,L.T("settings.export_locales"),L.T("settings.export_locales.action"),()=>{
                 try { app.Report(L.Tf("toast.locales_exported", L.ExportForCommunity())); }

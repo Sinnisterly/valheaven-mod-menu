@@ -190,7 +190,7 @@ namespace ValheimAdminMenu
             var phase = Plugin.Instance?.Phase;
             if (phase == null || (!phase.FreezeAiGlobal && !phase.FreezeAiNearby)) return true;
             Character character = null;
-            try { character = Reflection.Get<Character>(__instance, "m_character"); } catch { }
+            try { character = Reflection.Get<Character>(__instance, "m_character"); } catch (Exception caught) { AppLog.Swallow(caught); }
             if (!character || character is Player || character.IsTamed()) return true;
             if (phase.FreezeAiGlobal) return false;
             var player = Player.m_localPlayer;
@@ -236,12 +236,12 @@ namespace ValheimAdminMenu
                 Reflection.Set(__instance, "m_placeRotationDegrees", 1f);
                 __state.active = true;
             }
-            catch { __state = default; }
+            catch (Exception caught) { AppLog.Swallow(caught); __state = default; }
         }
         private static void Finalizer(Player __instance, State __state)
         {
             if (!__state.active) return;
-            try { Reflection.Set(__instance, "m_placeRotationDegrees", __state.degrees); } catch { }
+            try { Reflection.Set(__instance, "m_placeRotationDegrees", __state.degrees); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -374,7 +374,7 @@ namespace ValheimAdminMenu
                 Vector3 vel = Reflection.Get<Vector3>(__instance, "m_vel");
                 Reflection.Set(__instance, "m_vel", vel * mult);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 

@@ -120,6 +120,7 @@ namespace ValheimAdminMenu
             try { action(); }
             catch (Exception ex)
             {
+                AppLog.Error("Hotkey", "Hotkey action failed", ex);
                 if (Plugin.Instance) Plugin.Instance.Report(ex.GetBaseException().Message);
             }
         }
@@ -137,6 +138,7 @@ namespace ValheimAdminMenu
             if (clash != null) return L.Tf("toast.conflicts_feature", clash.Label);
             if (feature.Key == KeyCode.None && key != KeyCode.None) boundCount++;
             else if (feature.Key != KeyCode.None && key == KeyCode.None) boundCount = Math.Max(0, boundCount - 1);
+            AppLog.Info("Hotkey", "Bind " + id + ": " + feature.Key + " -> " + key);
             feature.Key = key;
             return null;
         }
@@ -146,6 +148,7 @@ namespace ValheimAdminMenu
             var feature = Find(id);
             if (feature == null) return;
             if (feature.Key != KeyCode.None) boundCount = Math.Max(0, boundCount - 1);
+            AppLog.Info("Hotkey", "Unbind " + id + " (was " + feature.Key + ")");
             feature.Key = KeyCode.None;
         }
 
@@ -160,9 +163,9 @@ namespace ValheimAdminMenu
                 {
                     if (bind == null || string.IsNullOrEmpty(bind.id)) continue;
                     var feature = Find(bind.id);
-                    if (feature == null) continue;
+                    if (feature == null) { AppLog.Warning("Hotkey", "Saved bind for unknown feature '" + bind.id + "' ignored"); continue; }
                     var key = (KeyCode)bind.key;
-                    if (!Rules.ValidHotkey(key)) continue;
+                    if (!Rules.ValidHotkey(key)) { AppLog.Warning("Hotkey", "Saved bind " + bind.id + "=" + key + " is not a valid key; ignored"); continue; }
                     feature.Key = key;
                     boundCount++;
                 }
@@ -201,13 +204,18 @@ namespace ValheimAdminMenu
                 if (!Input.GetKeyDown(feature.Key)) continue;
                 if (feature.Kind == HotkeyKind.Toggle && feature.Get != null && feature.Set != null)
                 {
-                    bool next = !feature.Get();
-                    feature.Set(next);
+                    bool next;
+                    try { next = !feature.Get(); }
+                    catch (Exception ex) { AppLog.Error("Hotkey", feature.Key + " " + feature.Id + " read failed", ex); continue; }
+                    AppLog.Info("Hotkey", feature.Key + " " + feature.Id + " -> " + (next ? "ON" : "OFF"));
+                    try { feature.Set(next); }
+                    catch (Exception ex) { AppLog.Error("Hotkey", feature.Key + " " + feature.Id + " set failed", ex); app.Report(ex.GetBaseException().Message); continue; }
                     app.Report(feature.Label + ": " + (next ? "ON" : L.T("ui.off")));
                 }
                 else if (feature.Kind == HotkeyKind.Action && feature.Run != null)
                 {
-                    app.Enqueue(feature.Run);
+                    AppLog.Info("Hotkey", feature.Key + " " + feature.Id + " (action)");
+                    app.Enqueue(feature.Run, "Hotkey " + feature.Id);
                 }
             }
         }

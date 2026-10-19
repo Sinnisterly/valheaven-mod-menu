@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -34,7 +35,7 @@ namespace ValheimAdminMenu
             attack = null;
             drawPct = 0f;
             if (human == null || human != Player.m_localPlayer) return false;
-            try { attack = Reflection.Get<Attack>(human, "m_currentAttack"); } catch { attack = null; }
+            try { attack = Reflection.Get<Attack>(human, "m_currentAttack"); } catch (Exception caught) { AppLog.Swallow(caught); attack = null; }
             drawPct = human.GetAttackDrawPercentage();
 
             if (attack == null || !IsProjectileAttack(attack))
@@ -47,13 +48,13 @@ namespace ValheimAdminMenu
             if (attack != null)
             {
                 float snap = 0f;
-                try { snap = Reflection.Get<float>(attack, "m_attackDrawPercentage"); } catch { snap = 0f; }
+                try { snap = Reflection.Get<float>(attack, "m_attackDrawPercentage"); } catch (Exception caught) { AppLog.Swallow(caught); snap = 0f; }
                 if (snap > 0.01f && (drawPct < 0.01f || human.InAttack()))
                     drawPct = snap;
             }
 
             if (drawPct > 0.01f) return true;
-            try { if (human.IsDrawingBow()) return true; } catch { }
+            try { if (human.IsDrawingBow()) return true; } catch (Exception caught) { AppLog.Swallow(caught); }
             if (attack != null && human.InAttack() && IsProjectileAttack(attack)) return true;
             return false;
         }
@@ -66,7 +67,7 @@ namespace ValheimAdminMenu
             if (!human || attack == null) return;
 
             Humanoid owner = null;
-            try { owner = Reflection.Get<Humanoid>(attack, "m_character"); } catch { owner = null; }
+            try { owner = Reflection.Get<Humanoid>(attack, "m_character"); } catch (Exception caught) { AppLog.Swallow(caught); owner = null; }
             if (owner == human)
             {
                 try
@@ -78,7 +79,7 @@ namespace ValheimAdminMenu
                     aim = (Vector3)args[1];
                     return;
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
 
             try
@@ -92,7 +93,7 @@ namespace ValheimAdminMenu
                     + body.right * attack.m_attackOffset;
                 aim = human.GetLookDir();
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         internal static bool IsRangedSkill(Skills.SkillType skill)
@@ -152,7 +153,7 @@ namespace ValheimAdminMenu
                     var weapon = Reflection.Get<ItemDrop.ItemData>(proj, "m_weapon");
                     skill = weapon?.m_shared?.m_skillType ?? Skills.SkillType.None;
                 }
-                catch { skill = Skills.SkillType.None; }
+                catch (Exception caught) { AppLog.Swallow(caught); skill = Skills.SkillType.None; }
             }
             return IsRangedSkill(skill);
         }
@@ -190,7 +191,7 @@ namespace ValheimAdminMenu
                     case BowAimTargetMode.HighestHealth:
                     {
                         float hp = 0f;
-                        try { hp = c.GetHealth(); } catch { hp = 0f; }
+                        try { hp = c.GetHealth(); } catch (Exception caught) { AppLog.Swallow(caught); hp = 0f; }
                         if (hp > bestHealth + 0.01f || (Mathf.Abs(hp - bestHealth) <= 0.01f && dist < bestDist))
                         {
                             bestHealth = hp;
@@ -231,7 +232,7 @@ namespace ValheimAdminMenu
             if (!target || speed < 0.5f) return Vector3.forward;
             Vector3 aim = target.GetCenterPoint();
             Vector3 vel = Vector3.zero;
-            try { vel = target.GetVelocity(); } catch { vel = Vector3.zero; }
+            try { vel = target.GetVelocity(); } catch (Exception caught) { AppLog.Swallow(caught); vel = Vector3.zero; }
 
             Vector3 dir = (aim - from).normalized;
             for (int i = 0; i < 4; i++)
@@ -442,7 +443,7 @@ namespace ValheimAdminMenu
                 var weapon = Reflection.Get<ItemDrop.ItemData>(proj, "m_weapon");
                 return weapon?.m_shared?.m_skillType ?? Skills.SkillType.None;
             }
-            catch { return Skills.SkillType.None; }
+            catch (Exception caught) { AppLog.Swallow(caught); return Skills.SkillType.None; }
         }
 
         /// <summary>Redirect fired vel toward predicted aim (after accuracy spread).</summary>
@@ -485,7 +486,7 @@ namespace ValheimAdminMenu
                 finalDir = Vector3.Slerp(aim.normalized, dir.normalized, Mathf.Clamp01(t)).normalized;
             }
 
-            try { Reflection.Set(proj, "m_vel", finalDir * speed); } catch { }
+            try { Reflection.Set(proj, "m_vel", finalDir * speed); } catch (Exception caught) { AppLog.Swallow(caught); }
             if (phase.BowAimAssist && phase.ShowAimPredict)
             {
                 PredictOrigin = from;
@@ -537,7 +538,7 @@ namespace ValheimAdminMenu
                 if (attack != null && !IsProjectileAttack(attack))
                     range = Mathf.Max(1.5f, attack.m_attackRange);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return range;
         }
 
@@ -551,7 +552,7 @@ namespace ValheimAdminMenu
             flat.y = 0f;
             if (flat.sqrMagnitude < 0.0001f) return;
             player.transform.rotation = Quaternion.LookRotation(flat.normalized, Vector3.up);
-            try { Reflection.Set(player, "m_lookDir", to.normalized); } catch { }
+            try { Reflection.Set(player, "m_lookDir", to.normalized); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         internal static void DrawMeleeLock()
@@ -591,7 +592,7 @@ namespace ValheimAdminMenu
             var phase = Plugin.Instance?.Phase;
             if (phase?.MeleeTargetLock != true) return;
             Humanoid human = null;
-            try { human = Reflection.Get<Humanoid>(__instance, "m_character"); } catch { return; }
+            try { human = Reflection.Get<Humanoid>(__instance, "m_character"); } catch (Exception caught) { AppLog.Swallow(caught); return; }
             if (human != Player.m_localPlayer) return;
             if (BowAim.IsProjectileAttack(__instance)) return;
             BowAim.TickMeleeLock();

@@ -35,7 +35,7 @@ namespace ValheimAdminMenu
                 if (!string.IsNullOrEmpty(Application.dataPath))
                     gameDir = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             }
-            catch { /* ignore */ }
+            catch { /* AppLog resolves paths through here; stay silent */ }
 
             if (!string.IsNullOrEmpty(gameDir) && TryEnsureWritable(gameDir))
             {

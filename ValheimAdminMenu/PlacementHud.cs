@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ValheimAdminMenu
@@ -125,7 +126,7 @@ namespace ValheimAdminMenu
                 if (piece && !string.IsNullOrEmpty(piece.m_name)) return piece.m_name;
                 return ghost.name.Replace("(Clone)", "").Trim();
             }
-            catch { return ""; }
+            catch (Exception caught) { AppLog.Swallow(caught); return ""; }
         }
 
         private static void EnsureStyles()

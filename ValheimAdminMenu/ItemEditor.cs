@@ -37,7 +37,7 @@ namespace ValheimAdminMenu
             if(value.Json!=json)
             {
                 value.Json=json;value.Data=null;
-                try{var data=JsonUtility.FromJson<ItemEdits>(json);if(data!=null && data.Valid())value.Data=data;}catch(ArgumentException){}
+                try{var data=JsonUtility.FromJson<ItemEdits>(json);if(data!=null && data.Valid())value.Data=data;}catch (ArgumentException caught) { AppLog.Swallow(caught); }
             }
             return value.Data;
         }

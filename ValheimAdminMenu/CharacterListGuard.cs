@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,15 +21,16 @@ namespace ValheimAdminMenu
             nextAt = Time.unscaledTime + Interval;
             List<Character> list;
             try { list = Reflection.GetStatic<List<Character>>(typeof(Character), "s_characters"); }
-            catch { return; }
+            catch (Exception caught) { AppLog.Swallow(caught); return; }
             if (list == null) return;
             int removed = list.RemoveAll(c => !c);
             if (removed <= 0) return;
             if (!reported)
             {
                 reported = true;
-                AppLog.Warning("Removed " + removed + " destroyed character(s) from the game's character list. Further purges are silent.");
+                AppLog.Warning("Guard", "Removed " + removed + " destroyed character(s) from the game's character list. Further purges log at Debug.");
             }
+            else AppLog.Debug("Guard", "Removed " + removed + " destroyed character(s) from Character.s_characters");
         }
     }
 }

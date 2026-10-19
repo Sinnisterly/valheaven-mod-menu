@@ -49,7 +49,7 @@ namespace ValheimAdminMenu
                     .Invoke(container, new object[] { playerId });
                 if (!allowed) return false;
             }
-            catch { return false; }
+            catch (Exception caught) { AppLog.Swallow(caught); return false; }
             var view = container.GetComponent<ZNetView>();
             return view && view.IsValid();
         }
@@ -94,7 +94,7 @@ namespace ValheimAdminMenu
             float r2 = radius * radius;
             Container[] all;
             try { all = WorldTools.Loaded<Container>(); }
-            catch { return; }
+            catch (Exception caught) { AppLog.Swallow(caught); return; }
             if (all == null) return;
 
             for (int i = 0; i < all.Length; i++)
@@ -117,12 +117,12 @@ namespace ValheimAdminMenu
                         if (view && view.IsValid() && !view.IsOwner() && container.GetInventory() == null)
                             view.ClaimOwnership();
                     }
-                    catch { }
+                    catch (Exception caught) { AppLog.Swallow(caught); }
                 }
 
                 cachedChests.Add(container);
                 Inventory inv = null;
-                try { inv = container.GetInventory(); } catch { }
+                try { inv = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (inv == null) continue;
                 try
                 {
@@ -139,7 +139,7 @@ namespace ValheimAdminMenu
                         cachedCounts[name] = have + item.m_stack;
                     }
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
         }
 
@@ -158,7 +158,7 @@ namespace ValheimAdminMenu
                 if (inv != null) Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool))
                     .Invoke(inv, new object[] { true, false });
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         internal static int CountNearby(Player player, string sharedName, int quality, float radius)
@@ -180,7 +180,7 @@ namespace ValheimAdminMenu
                     var inv = cachedChests[i].GetInventory();
                     if (inv != null) sum += inv.CountItems(sharedName, quality, true);
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
             return sum;
         }
@@ -207,7 +207,7 @@ namespace ValheimAdminMenu
                     left -= removed;
                     Touch(container);
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
             InvalidateCraftCache();
             return amount - left;
@@ -263,7 +263,7 @@ namespace ValheimAdminMenu
             {
                 var container = cachedChests[c];
                 Inventory src;
-                try { src = container.GetInventory(); } catch { continue; }
+                try { src = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                 if (src == null) continue;
                 foreach (var item in src.GetAllItems().ToList())
                 {
@@ -299,7 +299,7 @@ namespace ValheimAdminMenu
             foreach (var container in chests)
             {
                 Inventory to;
-                try { to = container.GetInventory(); } catch { continue; }
+                try { to = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                 if (to == null) continue;
                 if (preferExisting)
                 {

@@ -586,7 +586,7 @@ namespace ValheimAdminMenu
             if (!AutoPastePreview || Clipboard.Count == 0) return;
             if (!Plugin.Instance || !ZNetScene.instance) return;
             try { BeginPastePreview(true); }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         internal static void BeginPastePreview(bool atCrosshair)
@@ -601,6 +601,7 @@ namespace ValheimAdminMenu
             pasteOrigin = atCrosshair ? AimPasteOrigin(player) : player.transform.position;
             if (PasteSnapToGround && !PasteAnchorSnap) pasteOrigin = SeatOriginOnGround(pasteOrigin, PasteRotation());
             PastePreviewActive = true;
+            AppLog.Debug("Paste", "Preview start: " + Clipboard.Count + " pieces at " + pasteOrigin.ToString("F1") + (atCrosshair ? " (crosshair)" : " (feet)") + ", snap " + PasteSnapToGround + ", anchor " + PasteAnchorSnap);
             RebuildPasteGhosts();
             Plugin.Instance.Report("Paste preview active. LMB place, P lock, RMB cancel.");
         }
@@ -627,6 +628,7 @@ namespace ValheimAdminMenu
             var supports = PasteLevelPerPiece ? BuildSupportPads(PasteFeather) : null;
             var terrain = ClipboardTerrain;
             bool applyTerrain = ApplyTerrainProfile && terrain != null;
+            AppLog.Debug("Paste", "Confirm: " + Clipboard.Count + " pieces at " + origin.ToString("F1") + ", yaw " + PasteYaw.ToString("F0") + ", terrain " + (applyTerrain ? "profile" : PasteLevelGround ? (supports != null && supports.Count > 0 ? "supports " + supports.Count : "pad") : "none"));
             CancelPastePreview(silent: true);
             if (pad.HasValue)
                 Plugin.Instance.World.RememberPad(pad.Value);
@@ -650,6 +652,7 @@ namespace ValheimAdminMenu
 
         internal static void CancelPastePreview(bool silent = false)
         {
+            if (PastePreviewActive) AppLog.Debug("Paste", "Preview end" + (silent ? " (confirmed/internal)" : " (cancelled)"));
             DestroyPasteGhosts();
             PastePreviewActive = false;
             PasteLocked = false;
@@ -694,6 +697,7 @@ namespace ValheimAdminMenu
             try { ConfirmPaste(); }
             catch (Exception ex)
             {
+                AppLog.Error("Paste", "Confirm paste (click) failed", ex);
                 if (Plugin.Instance) Plugin.Instance.Report(ex.GetBaseException().Message);
             }
         }
@@ -701,7 +705,7 @@ namespace ValheimAdminMenu
         private static bool ChatHasFocus()
         {
             try { return Chat.instance && Chat.instance.HasFocus(); }
-            catch { return false; }
+            catch (Exception caught) { AppLog.Swallow(caught); return false; }
         }
 
         private static KeyCode PasteLockHotkey()
@@ -712,7 +716,7 @@ namespace ValheimAdminMenu
                 if (feature != null && feature.Key != KeyCode.None && Rules.ValidHotkey(feature.Key))
                     return feature.Key;
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return KeyCode.P;
         }
 
@@ -750,7 +754,7 @@ namespace ValheimAdminMenu
                     if (!float.IsNaN(h) && !float.IsInfinity(h)) return h;
                 }
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             if (Physics.Raycast(pos + Vector3.up * 80f, Vector3.down, out var hit, 200f,
                 LayerMask.GetMask("terrain", "Default", "static_solid"), QueryTriggerInteraction.Ignore))
                 return hit.point.y;
@@ -762,7 +766,7 @@ namespace ValheimAdminMenu
             origin = default;
             if (!TryGetLookPiece(player, out var worldPiece, out _)) return false;
             var worldSnaps = new List<Transform>();
-            try { worldPiece.GetSnapPoints(worldSnaps); } catch { return false; }
+            try { worldPiece.GetSnapPoints(worldSnaps); } catch (Exception caught) { AppLog.Swallow(caught); return false; }
             if (worldSnaps.Count == 0) return false;
 
             var rot = PasteRotation();
@@ -786,7 +790,7 @@ namespace ValheimAdminMenu
                     var piece = prefab.GetComponent<Piece>();
                     if (!piece) continue;
                     var localSnaps = new List<Transform>();
-                    try { piece.GetSnapPoints(localSnaps); } catch { continue; }
+                    try { piece.GetSnapPoints(localSnaps); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                     for (int s = 0; s < localSnaps.Count; s++)
                     {
                         var st = localSnaps[s];
@@ -963,7 +967,7 @@ namespace ValheimAdminMenu
             {
                 if (!view) continue;
                 view.enabled = false;
-                try { Reflection.Set(view, "m_ghost", true); } catch { }
+                try { Reflection.Set(view, "m_ghost", true); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             foreach (var wnt in go.GetComponentsInChildren<WearNTear>(true))
                 if (wnt) wnt.enabled = false;
@@ -1125,9 +1129,9 @@ namespace ValheimAdminMenu
             var player = Plugin.Instance.RequirePlayer();
             long playerId = player.GetPlayerID();
             PlatformUserID platformUser = default;
-            try { platformUser = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch { }
+            try { platformUser = PlatformManager.DistributionPlatform.LocalUser.PlatformUserID; } catch (Exception caught) { AppLog.Swallow(caught); }
             string profileName = "";
-            try { profileName = Game.instance?.GetPlayerProfile()?.GetName() ?? ""; } catch { }
+            try { profileName = Game.instance?.GetPlayerProfile()?.GetName() ?? ""; } catch (Exception caught) { AppLog.Swallow(caught); }
 
             int n = 0, skipped = 0;
             var placedScratch = new List<IPlaced>(4);
@@ -1148,7 +1152,7 @@ namespace ValheimAdminMenu
                 {
                     if (!view.IsOwner()) view.ClaimOwnership();
                     view.SetLocalScale(entry.Scale);
-                    try { Reflection.Method(typeof(ZNetView), "SyncScale").Invoke(view, null); } catch { }
+                    try { Reflection.Method(typeof(ZNetView), "SyncScale").Invoke(view, null); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
                 else obj.transform.localScale = entry.Scale;
 
@@ -1156,19 +1160,19 @@ namespace ValheimAdminMenu
                 if (piece)
                 {
                     // Sets ZDOVars.s_creator for IsPlacedByPlayer / remove-own-piece.
-                    try { piece.SetCreator(playerId, platformUser); } catch { }
+                    try { piece.SetCreator(playerId, platformUser); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
 
-                try { obj.GetComponent<PrivateArea>()?.Setup(profileName); } catch { }
+                try { obj.GetComponent<PrivateArea>()?.Setup(profileName); } catch (Exception caught) { AppLog.Swallow(caught); }
                 // Recalc support now (skips 30s post-Awake grace).
-                try { obj.GetComponent<WearNTear>()?.OnPlaced(); } catch { }
-                try { obj.GetComponent<ItemDrop>()?.MakePiece(sendRPC: true); } catch { }
+                try { obj.GetComponent<WearNTear>()?.OnPlaced(); } catch (Exception caught) { AppLog.Swallow(caught); }
+                try { obj.GetComponent<ItemDrop>()?.MakePiece(sendRPC: true); } catch (Exception caught) { AppLog.Swallow(caught); }
 
                 placedScratch.Clear();
                 obj.GetComponents(placedScratch);
                 foreach (var placed in placedScratch)
                 {
-                    try { placed.OnPlaced(); } catch { }
+                    try { placed.OnPlaced(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
 
                 n++;
@@ -1201,7 +1205,7 @@ namespace ValheimAdminMenu
             if (!view.IsOwner()) view.ClaimOwnership();
             if (!view.IsOwner()) throw new InvalidOperationException("Could not claim ownership of that piece.");
             view.SetLocalScale(Vector3.one * scale);
-            try { Reflection.Method(typeof(ZNetView), "SyncScale").Invoke(view, null); } catch { }
+            try { Reflection.Method(typeof(ZNetView), "SyncScale").Invoke(view, null); } catch (Exception caught) { AppLog.Swallow(caught); }
             Plugin.Instance.Report("Scaled " + piece.name + " to " + scale.ToString("0.##") + "x.");
         }
 
@@ -1381,12 +1385,12 @@ namespace ValheimAdminMenu
             foreach (var container in ChestInventory.NearbyAccessible(player, ChestInventory.Radius))
             {
                 Inventory inv;
-                try { inv = container.GetInventory(); } catch { continue; }
+                try { inv = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                 if (inv == null) continue;
                 stacks += MergeStacks(inv);
                 SortInventory(inv);
                 chests++;
-                try { Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool)).Invoke(inv, new object[] { true, false }); } catch { }
+                try { Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool)).Invoke(inv, new object[] { true, false }); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             Plugin.Instance.Report("Sorted/merged " + chests + " chest(s); collapsed " + stacks + " stack gap(s).");
         }
@@ -1396,7 +1400,7 @@ namespace ValheimAdminMenu
             var inv = Plugin.Instance.RequirePlayer().GetInventory();
             int merged = MergeStacks(inv);
             SortInventory(inv);
-            try { Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool)).Invoke(inv, new object[] { true, false }); } catch { }
+            try { Reflection.Method(typeof(Inventory), "Changed", typeof(bool), typeof(bool)).Invoke(inv, new object[] { true, false }); } catch (Exception caught) { AppLog.Swallow(caught); }
             Plugin.Instance.Report("Inventory sorted; merged " + merged + " stack gap(s).");
         }
 
@@ -1472,7 +1476,7 @@ namespace ValheimAdminMenu
                 foreach (var container in chests)
                 {
                     Inventory to;
-                    try { to = container.GetInventory(); } catch { continue; }
+                    try { to = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                     if (to == null) continue;
                     if (preferExisting && to.CountItems(item.m_shared.m_name, item.m_quality, true) <= 0) continue;
                     if (!to.CanAddItem(item)) continue;
@@ -1534,7 +1538,7 @@ namespace ValheimAdminMenu
             plant.m_tolerateCold = true;
             plant.m_tolerateHeat = true;
             plant.m_biome = Heightmap.Biome.All;
-            try { Reflection.Set(plant, "m_status", Plant.Status.Healthy); } catch { }
+            try { Reflection.Set(plant, "m_status", Plant.Status.Healthy); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         internal static void GrowNearbyPlants()
@@ -1556,7 +1560,7 @@ namespace ValheimAdminMenu
                     if (plant.Grow() != null) n++;
                     else skipped++;
                 }
-                catch { skipped++; }
+                catch (Exception caught) { AppLog.Swallow(caught); skipped++; }
             }
             Plugin.Instance.Report(skipped > 0
                 ? $"Forced grow on {n} plants ({skipped} skipped)."
@@ -1600,17 +1604,18 @@ namespace ValheimAdminMenu
                 try
                 {
                     bool pregnant = false;
-                    try { pregnant = (bool)Reflection.Method(typeof(Procreation), "IsPregnant").Invoke(proc, null); } catch { }
+                    try { pregnant = (bool)Reflection.Method(typeof(Procreation), "IsPregnant").Invoke(proc, null); } catch (Exception caught) { AppLog.Swallow(caught); }
                     if (!pregnant)
                     {
                         try { Reflection.Method(typeof(Procreation), "MakePregnant").Invoke(proc, null); n++; }
-                        catch
+                        catch (Exception missing)
                         {
-                            try { Reflection.Method(typeof(Procreation), "Procreate").Invoke(proc, null); n++; } catch { }
+                            AppLog.Swallow(missing);
+                            try { Reflection.Method(typeof(Procreation), "Procreate").Invoke(proc, null); n++; } catch (Exception caught) { AppLog.Swallow(caught); }
                         }
                     }
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
             Plugin.Instance.Report("Marked " + n + " nearby creatures pregnant (owned Procreation components).");
         }
@@ -1623,9 +1628,9 @@ namespace ValheimAdminMenu
                 if (!tame || !tame.IsTamed()) continue;
                 if ((tame.transform.position - player.transform.position).sqrMagnitude > r * r) continue;
                 bool hungry = true;
-                try { hungry = (bool)Reflection.Method(typeof(Tameable), "IsHungry").Invoke(tame, null); } catch { }
+                try { hungry = (bool)Reflection.Method(typeof(Tameable), "IsHungry").Invoke(tame, null); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (!hungry) continue;
-                try { Reflection.Method(typeof(Tameable), "ResetFeedingTimer").Invoke(tame, null); } catch { }
+                try { Reflection.Method(typeof(Tameable), "ResetFeedingTimer").Invoke(tame, null); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
         }
 
@@ -1637,7 +1642,7 @@ namespace ValheimAdminMenu
             if (current != on)
             {
                 try { Reflection.Method(typeof(GameCamera), "ToggleFreeFly").Invoke(GameCamera.instance, null); }
-                catch { GameCamera.instance.ToggleFreeFly(); }
+                catch (Exception caught) { AppLog.Swallow(caught); GameCamera.instance.ToggleFreeFly(); }
             }
             Plugin.Instance.Phase.Freecam = GameCamera.InFreeFly();
             Plugin.Instance.Report("Freecam: " + (Plugin.Instance.Phase.Freecam ? "ON" : L.T("ui.off")) + " (vanilla free-fly; independent of Flight).");
@@ -1679,7 +1684,7 @@ namespace ValheimAdminMenu
             }
             float z = Mathf.Clamp(minimapZoomValue, .5f, 2.5f);
             bool largeMapOpen = false;
-            try { largeMapOpen = Minimap.instance.m_mode == Minimap.MapMode.Large; } catch { largeMapOpen = true; }
+            try { largeMapOpen = Minimap.instance.m_mode == Minimap.MapMode.Large; } catch (Exception caught) { AppLog.Swallow(caught); largeMapOpen = true; }
             bool dirty = float.IsNaN(lastAppliedMinimapZoom) || Mathf.Abs(lastAppliedMinimapZoom - z) > .001f || !minimapRangeExpanded;
             // Corner map: only on slider change. Large map: soft maintain ~6 Hz.
             if (!dirty && !largeMapOpen) return;
@@ -1707,14 +1712,15 @@ namespace ValheimAdminMenu
                 Minimap.instance.LargeZoom = target;
                 Minimap.instance.SmallZoom = target;
             }
-            catch
+            catch (Exception clamp)
             {
-                try { Reflection.Set(Minimap.instance, "m_largeZoom", target); } catch { }
-                try { Reflection.Set(Minimap.instance, "m_smallZoom", target); } catch { }
+                AppLog.Swallow(clamp);
+                try { Reflection.Set(Minimap.instance, "m_largeZoom", target); } catch (Exception caught) { AppLog.Swallow(caught); }
+                try { Reflection.Set(Minimap.instance, "m_smallZoom", target); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             // 1.0.12: fields private, properties clamp to m_min/m_max. Set via reflection too.
-            try { Reflection.Set(Minimap.instance, "m_largeZoom", target); } catch { }
-            try { Reflection.Set(Minimap.instance, "m_smallZoom", target); } catch { }
+            try { Reflection.Set(Minimap.instance, "m_largeZoom", target); } catch (Exception caught) { AppLog.Swallow(caught); }
+            try { Reflection.Set(Minimap.instance, "m_smallZoom", target); } catch (Exception caught) { AppLog.Swallow(caught); }
             lastAppliedMinimapZoom = z;
             nextMinimapMaintain = Time.unscaledTime + (largeMapOpen ? .15f : 1f);
         }
@@ -1765,13 +1771,14 @@ namespace ValheimAdminMenu
                         .Invoke(grave, new object[] { player, false, false });
                     n++;
                 }
-                catch
+                catch (Exception interact)
                 {
+                    AppLog.Swallow(interact);
                     // Fallback: pull container contents
                     var container = grave.GetComponent<Container>();
                     if (container == null) continue;
                     Inventory src;
-                    try { src = container.GetInventory(); } catch { continue; }
+                    try { src = container.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); continue; }
                     if (src == null) continue;
                     foreach (var item in src.GetAllItems().ToList())
                     {
@@ -1910,7 +1917,7 @@ namespace ValheimAdminMenu
                         Reflection.Method(typeof(Sadle), "RPC_ReleaseControl", typeof(long), typeof(long))
                             .Invoke(saddle, new object[] { player.GetPlayerID(), player.GetPlayerID() });
                     }
-                    catch { }
+                    catch (Exception caught) { AppLog.Swallow(caught); }
                 }
                 DetachLoose(player);
                 Plugin.Instance.Report("Dismounted.");
@@ -1936,7 +1943,7 @@ namespace ValheimAdminMenu
             }
             if (GameCamera.instance && !GameCamera.InFreeFly())
             {
-                try { SetFreecam(true); } catch { }
+                try { SetFreecam(true); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             var cam = GameCamera.instance ? GameCamera.instance.transform : null;
             if (!cam) return;
@@ -1966,7 +1973,7 @@ namespace ValheimAdminMenu
                 buildBody.linearVelocity = Vector3.zero;
                 buildBody.angularVelocity = Vector3.zero;
             }
-            try { Reflection.Set(player, "m_maxAirAltitude", pos.y); } catch { }
+            try { Reflection.Set(player, "m_maxAirAltitude", pos.y); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         private static void RestoreFreecamBuild(Player player)
@@ -2006,7 +2013,7 @@ namespace ValheimAdminMenu
         {
             if (!player) return;
             // Valheim 1.0.20 has no m_baseAirAltitude; writing it threw (uncached) every frame.
-            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
+            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         private static void TickFlyingMount(Player player)
@@ -2026,10 +2033,10 @@ namespace ValheimAdminMenu
             if (!saddle) return;
             bool local = false;
             try { local = (bool)Reflection.Method(typeof(Sadle), "IsLocalUser").Invoke(saddle, null); }
-            catch { return; }
+            catch (Exception caught) { AppLog.Swallow(caught); return; }
             if (!local) return;
             Character mount = null;
-            try { mount = Reflection.Get<Character>(saddle, "m_character"); } catch { mount = saddle.GetComponentInParent<Character>(); }
+            try { mount = Reflection.Get<Character>(saddle, "m_character"); } catch (Exception caught) { AppLog.Swallow(caught); mount = saddle.GetComponentInParent<Character>(); }
             var body = mount ? mount.GetComponent<Rigidbody>() : null;
             if (!body) return;
             if (looseBody != body)
@@ -2073,7 +2080,7 @@ namespace ValheimAdminMenu
                 }
             }
             body.linearVelocity = vel;
-            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
+            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         private static Vector3 FlatWish(Player player)
@@ -2099,7 +2106,7 @@ namespace ValheimAdminMenu
                 var doodad = Reflection.Get<object>(player, "m_doodadController");
                 return doodad as Sadle;
             }
-            catch { return null; }
+            catch (Exception caught) { AppLog.Swallow(caught); return null; }
         }
 
         private static void AttachLoose(Player player, Character mount)
@@ -2145,7 +2152,7 @@ namespace ValheimAdminMenu
             bool fly = Plugin.Instance.Phase.FlyingMount;
             DriveLoose(looseMount, player, fly);
             if (!fly && body.useGravity == false) body.useGravity = true;
-            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch { }
+            try { Reflection.Set(player, "m_maxAirAltitude", player.transform.position.y); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
 
         private static void DriveLoose(Character mount, Player player, bool fly)
@@ -2283,7 +2290,7 @@ namespace ValheimAdminMenu
                 if (view && view.IsValid())
                     hp = view.GetZDO().GetFloat(ZDOVars.s_health, __instance.m_health);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             hit.m_damage.m_damage = Mathf.Max(hit.m_damage.m_damage, hp + 1f);
             hit.m_damage.m_chop = Mathf.Max(hit.m_damage.m_chop, hp + 1f);
             hit.m_damage.m_pickaxe = Mathf.Max(hit.m_damage.m_pickaxe, hp + 1f);
@@ -2329,7 +2336,7 @@ namespace ValheimAdminMenu
                 if (Hud.instance && Hud.instance.m_loadingScreen)
                     Hud.instance.m_loadingScreen.alpha = 0f;
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return false;
         }
     }
@@ -2345,8 +2352,8 @@ namespace ValheimAdminMenu
             if (Chat.instance && Chat.instance.HasFocus()) return;
             if (Console.IsVisible() || TextInput.IsVisible() || StoreGui.IsVisible() || InventoryGui.IsVisible() || Menu.IsVisible() || Minimap.IsOpen()) return;
             if (TextViewer.instance && TextViewer.instance.IsVisible()) return;
-            try { if (PlayerCustomizaton.IsBarberGuiVisible()) return; } catch { }
-            try { if (Hud.instance && Hud.instance.m_buildUi != null && Hud.instance.m_buildUi.SearchFieldFocused) return; } catch { }
+            try { if (PlayerCustomizaton.IsBarberGuiVisible()) return; } catch (Exception caught) { AppLog.Swallow(caught); }
+            try { if (Hud.instance && Hud.instance.m_buildUi != null && Hud.instance.m_buildUi.SearchFieldFocused) return; } catch (Exception caught) { AppLog.Swallow(caught); }
             __result = true;
         }
     }
@@ -2359,7 +2366,7 @@ namespace ValheimAdminMenu
             // Piece list needs the cursor; free-fly would keep turning the camera under it.
             if (Plugin.Instance?.Phase.FreecamBuild != true || !GameCamera.InFreeFly()) return true;
             try { return !Hud.IsPieceSelectionVisible(); }
-            catch { return true; }
+            catch (Exception caught) { AppLog.Swallow(caught); return true; }
         }
 
         private static void Postfix(GameCamera __instance)
@@ -2378,7 +2385,7 @@ namespace ValheimAdminMenu
                 float pitch = Reflection.Get<float>(__instance, "m_freeFlyPitch");
                 __instance.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(pitch, 0f, 0f);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -2398,7 +2405,7 @@ namespace ValheimAdminMenu
                 savedFoods = new List<object>();
                 foreach (var entry in foods) savedFoods.Add(entry);
             }
-            catch { savedFoods = null; }
+            catch (Exception caught) { AppLog.Swallow(caught); savedFoods = null; }
         }
 
         private static void Postfix(Player __instance)
@@ -2411,7 +2418,7 @@ namespace ValheimAdminMenu
                 foods.Clear();
                 foreach (var entry in savedFoods) foods.Add(entry);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             savedFoods = null;
         }
     }
@@ -2434,7 +2441,7 @@ namespace ValheimAdminMenu
             if (!HoldingBuildHammer(__instance)) return;
             // TryPlacePiece gets the catalog prefab, not the build site. Use the ghost.
             GameObject ghost = null;
-            try { ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost"); } catch { ghost = null; }
+            try { ghost = Reflection.Get<GameObject>(__instance, "m_placementGhost"); } catch (Exception caught) { AppLog.Swallow(caught); ghost = null; }
             if (!ghost) return;
             if (ghost.GetComponent<Plant>() || ghost.GetComponentInChildren<Plant>(true)) return;
             try { Release250.LevelUnderPlaced(ghost); }
@@ -2468,7 +2475,7 @@ namespace ValheimAdminMenu
                 if (tame && !tame.IsTamed())
                     Reflection.Method(typeof(Tameable), "Tame").Invoke(tame, null);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -2484,7 +2491,7 @@ namespace ValheimAdminMenu
                 bool local = (bool)Reflection.Method(typeof(Sadle), "IsLocalUser").Invoke(__instance, null);
                 return !local;
             }
-            catch { return true; }
+            catch (Exception caught) { AppLog.Swallow(caught); return true; }
         }
     }
 }

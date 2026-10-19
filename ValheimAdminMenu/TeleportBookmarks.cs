@@ -43,7 +43,7 @@ namespace ValheimAdminMenu
                     if (!string.IsNullOrWhiteSpace(name)) return name.Trim();
                 }
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return "default";
         }
 
@@ -56,7 +56,7 @@ namespace ValheimAdminMenu
                 if (File.Exists(PathName))
                     JsonUtility.FromJsonOverwrite(File.ReadAllText(PathName), store);
             }
-            catch { store = new BookmarkStore(); }
+            catch (Exception caught) { AppLog.Swallow(caught); store = new BookmarkStore(); }
             if (store.worlds == null) store.worlds = new List<BookmarkWorld>();
         }
 

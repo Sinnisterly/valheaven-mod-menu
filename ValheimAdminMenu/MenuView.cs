@@ -124,7 +124,7 @@ namespace ValheimAdminMenu
         {
             var size=canvasRect?canvasRect.rect.size:Vector2.zero;
             string display;
-            try{display=Display.main.renderingWidth+"x"+Display.main.renderingHeight;}catch{display="?";}
+            try{display=Display.main.renderingWidth+"x"+Display.main.renderingHeight;}catch (Exception caught) { AppLog.Swallow(caught); display="?"; }
             return "GFX "+SystemInfo.graphicsDeviceType+" / "+Screen.fullScreenMode
                 +", screen "+Screen.width+"x"+Screen.height+", display "+display
                 +", canvas "+(canvas?(canvas.enabled+" "+canvas.renderMode+" scale "+canvas.scaleFactor.ToString("0.###")):"missing")
@@ -155,7 +155,7 @@ namespace ValheimAdminMenu
         }
         internal void Hide()
         {
-            ClearHover(); ClosePopup(); CancelConfirmation(); StopBinding();
+            FlushSlider(); ClearHover(); ClosePopup(); CancelConfirmation(); StopBinding();
             DetachMenuInput();
             if(inputSystem)inputSystem.SetSelectedGameObject(null);
             if(ownedSystem)ownedSystem.SetActive(false);
@@ -222,6 +222,7 @@ namespace ValheimAdminMenu
                 try { EnsureCanvas(); root.SetActive(true); }
                 catch (Exception ex) { AppLog.Warning("Menu canvas restore failed: " + ex.Message); return; }
             }
+            TickSliderLog();
             if(rebuild){BuildPage();rebuild=false;}
             FitWindow();
             if(!sizeChecked && Time.frameCount-openedFrame>30)
@@ -280,13 +281,13 @@ namespace ValheimAdminMenu
             var goSearch=ActionButton(header,L.T("chrome.go"),JumpMenuSearch,L.T("search.go.help"));
             // ActionButton is NoWrap; 40px made "Go" stack as G/o.
             At((RectTransform)goSearch.transform,Width-118,20,48,30);
-            var close=ActionButton(header,L.T("chrome.close_x"),()=>app.SetOpen(false),L.T("chrome.close_x.help"));At((RectTransform)close.transform,Width-62,18,34,34);
+            var close=ActionButton(header,L.T("chrome.close_x"),()=>app.SetOpen(false),L.T("chrome.close_x.help"),false,"Close menu");At((RectTransform)close.transform,Width-62,18,34,34);
             var sidebar=Box(window,"Navigation",new Color(.069f,.067f,.061f),false);At(sidebar,1,75,181,Height-76);
             float navStep=Mathf.Min(42f,(Height-240f)/TabKeys.Length);
             for(int i=0;i<TabKeys.Length;i++)
             {
                 int index=i;
-                var b=ActionButton(sidebar,TabLabel(i),()=>{tab=index;BuildPage();},null);
+                var b=ActionButton(sidebar,TabLabel(i),()=>{tab=index;BuildPage();},null,false,"Tab "+TabKeys[i].Substring(5));
                 At((RectTransform)b.transform,12,10+i*navStep,157,Mathf.Min(36,navStep-3));
                 var text=b.GetComponentInChildren<TextMeshProUGUI>();text.alignment=TextAlignmentOptions.MidlineLeft;text.margin=new Vector4(16,0,6,0);text.fontSize=15;
                 ChromeCaption(text);
@@ -446,7 +447,7 @@ namespace ValheimAdminMenu
             for(int i=0;i<labels.Length;i++)
             {
                 int index=i;
-                var b=ActionButton(subNav,labels[i],()=>{subTabs[tab]=index;BuildPage();},null);
+                var b=ActionButton(subNav,labels[i],()=>{subTabs[tab]=index;BuildPage();},null,false,"Sub-tab "+labels[i]);
                 var text=b.GetComponentInChildren<TextMeshProUGUI>();
                 text.fontSize=15;text.alignment=TextAlignmentOptions.Center;text.margin=Vector4.zero;
                 ChromeCaption(text);
@@ -472,10 +473,10 @@ namespace ValheimAdminMenu
             var panel=Box(dialog,"Dialog",Panel,true);panel.anchorMin=panel.anchorMax=panel.pivot=new Vector2(.5f,.5f);panel.sizeDelta=new Vector2(510,250);panel.localScale=Vector3.one*Mathf.Min(1,canvasRect.rect.width/550,canvasRect.rect.height/290);Border(panel,GoldDim);
             LabelAt(panel,title,24,22,462,40,25,Ink);
             var detail=LabelAt(panel,description,24,76,462,92,17,Muted);detail.textWrappingMode=TextWrappingModes.Normal;detail.alignment=TextAlignmentOptions.TopLeft;
-            var cancel=ActionButton(panel,L.T("chrome.cancel"),CancelConfirmation);At((RectTransform)cancel.transform,242,190,112,36);
-            var yes=ActionButton(panel,L.T("chrome.confirm"),()=>{CancelConfirmation();Run(action);},null,true);At((RectTransform)yes.transform,366,190,120,36);
+            var cancel=ActionButton(panel,L.T("chrome.cancel"),CancelConfirmation,null,false,"Cancel \""+title+"\"");At((RectTransform)cancel.transform,242,190,112,36);
+            var yes=ActionButton(panel,L.T("chrome.confirm"),()=>{CancelConfirmation();Run(action,"Confirm \""+title+"\"");},null,true,"Confirm \""+title+"\"");At((RectTransform)yes.transform,366,190,120,36);
         }
-        private void SelectFrom(RectTransform anchor,IEnumerable<KeyValuePair<string,Action>> choices)
+        private void SelectFrom(RectTransform anchor,IEnumerable<KeyValuePair<string,Action>> choices,string context=null)
         {
             ClosePopup();ClearHover();
             popup=Node(canvasRect,"Dropdown layer");Stretch(popup);
@@ -492,13 +493,13 @@ namespace ValheimAdminMenu
             {
                 Clear(list);
                 foreach(var choice in all.Where(c=>c.Key.IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0))
-                {var c=choice;var b=ActionButton(list,c.Key,()=>{ClosePopup();c.Value();});Fixed((RectTransform)b.transform,34);}
+                {var c=choice;var b=ActionButton(list,c.Key,()=>{ClosePopup();c.Value();},null,false,(context??"Select")+" = "+c.Key);Fixed((RectTransform)b.transform,34);}
                 needsLayout=true;
             };
             var search=InputBox(panel,"",filter,L.T("chrome.dropdown.search"),80);At((RectTransform)search.transform,10,10,w-20,32);
             filter("");
         }
-        private void Run(Action action){app.Enqueue(action);}
+        private void Run(Action action,string label=null){app.Enqueue(action,label==null?null:PageName()+" | "+label);}
         private void RebuildAfter(Action action){Run(()=>{action();rebuild=true;});}
         private void OnLanguageChanged()
         {

@@ -81,7 +81,7 @@ namespace ValheimAdminMenu
         {
             string template = T(key);
             try { return args == null || args.Length == 0 ? template : string.Format(template, args); }
-            catch { return template; }
+            catch (Exception caught) { AppLog.Swallow(caught); return template; }
         }
 
         /// <summary>Write packs into locales/ for community editing.</summary>

@@ -51,8 +51,9 @@ namespace ValheimAdminMenu
                 string lang = Localization.instance.GetSelectedLanguage();
                 return string.IsNullOrWhiteSpace(lang) ? "English" : lang;
             }
-            catch
+            catch (Exception ex)
             {
+                AppLog.Swallow(ex);
                 return valheimLanguage;
             }
         }

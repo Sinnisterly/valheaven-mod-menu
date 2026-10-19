@@ -178,13 +178,13 @@ namespace ValheimAdminMenu
                 if (now >= release250WarnAt)
                 {
                     release250WarnAt = now + 10f;
-                    AppLog.Warning("Build tools tick failed: " + ex.GetBaseException().Message);
+                    AppLog.Warning("Build", "Build tools tick failed (next report in 10s at most): " + AppLog.Describe(ex));
                 }
             }
             try { BowAim.TickPredict(); }
-            catch { BowAim.ClearPredictMarker(); }
+            catch (Exception caught) { AppLog.Swallow(caught); BowAim.ClearPredictMarker(); }
             try { BowAim.TickMeleeLock(); }
-            catch { BowAim.ClearMeleeLock(); }
+            catch (Exception caught) { AppLog.Swallow(caught); BowAim.ClearMeleeLock(); }
         }
         private void ApplyCart(Player p)
         {
@@ -197,7 +197,7 @@ namespace ValheimAdminMenu
             if (cartOwned && cartRef && cartRef.IsAttached())
             {
                 GameObject hitch = null;
-                try { hitch = Reflection.Get<GameObject>(cartRef, "m_attachedObject"); } catch { }
+                try { hitch = Reflection.Get<GameObject>(cartRef, "m_attachedObject"); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (hitch == p.gameObject)
                 {
                     ApplyCartEase();
@@ -212,7 +212,7 @@ namespace ValheimAdminMenu
                 if (!wagon || !wagon.IsAttached()) continue;
                 // m_attachedObject is private on Vagon.
                 GameObject hitch = null;
-                try { hitch = Reflection.Get<GameObject>(wagon, "m_attachedObject"); } catch { }
+                try { hitch = Reflection.Get<GameObject>(wagon, "m_attachedObject"); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (hitch == p.gameObject) { attached = wagon; break; }
             }
             if (!attached)
@@ -248,7 +248,7 @@ namespace ValheimAdminMenu
             // UpdateMass on ease change or a slow heartbeat (cargo can change).
             if (!valuesChanged && Time.unscaledTime < cartMassAt) return;
             cartMassAt = Time.unscaledTime + .5f;
-            try { Reflection.Method(typeof(Vagon), "UpdateMass").Invoke(cartRef, null); } catch { }
+            try { Reflection.Method(typeof(Vagon), "UpdateMass").Invoke(cartRef, null); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
         private void RestoreCart()
         {
@@ -257,7 +257,7 @@ namespace ValheimAdminMenu
             cartRef.m_itemWeightMassFactor = cartWeightFactor;
             cartRef.m_breakForce = cartBreak;
             cartRef.m_spring = cartSpring;
-            try { Reflection.Method(typeof(Vagon), "UpdateMass").Invoke(cartRef, null); } catch { }
+            try { Reflection.Method(typeof(Vagon), "UpdateMass").Invoke(cartRef, null); } catch (Exception caught) { AppLog.Swallow(caught); }
             cartOwned = false;
             cartRef = null;
             appliedCartEase = float.NaN;
@@ -334,7 +334,7 @@ namespace ValheimAdminMenu
         private bool PullItems(Player p)
         {
             List<ItemDrop> drops = null;
-            try { drops = Reflection.GetStatic<List<ItemDrop>>(typeof(ItemDrop), "s_instances"); } catch { drops = null; }
+            try { drops = Reflection.GetStatic<List<ItemDrop>>(typeof(ItemDrop), "s_instances"); } catch (Exception caught) { AppLog.Swallow(caught); drops = null; }
             if (drops == null) return false;
             PullItemsCore(p, drops);
             return true;
@@ -408,7 +408,7 @@ namespace ValheimAdminMenu
                     distance = Mathf.Clamp(distance, cam.m_minDistance, activeMax);
                 Reflection.Set(cam, "m_distance", distance);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             lastCameraDistance = distScale;
             lastBoatCameraDistance = boatScale;
             lastFovScale = fovScale;
@@ -430,7 +430,7 @@ namespace ValheimAdminMenu
                     float distance = Reflection.Get<float>(cam, "m_distance");
                     Reflection.Set(cam, "m_distance", Mathf.Clamp(distance, cam.m_minDistance, cam.m_maxDistance));
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
         }
         private void ApplyHud()
@@ -564,7 +564,7 @@ namespace ValheimAdminMenu
                 __state.fired = count;
                 __state.active = true;
             }
-            catch { __state = default; }
+            catch (Exception caught) { AppLog.Swallow(caught); __state = default; }
         }
         private static void Finalizer(Attack __instance, State __state)
         {
@@ -576,7 +576,7 @@ namespace ValheimAdminMenu
                 Reflection.Set(__instance, "m_projectileAccuracyMin", __state.accuracyMin);
                 Reflection.Set(__instance, "m_destroyPreviousProjectile", __state.destroyPrevious);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             // Extra shots each drain durability (vanilla already drained once on trigger).
             if (__state.fired <= 1 || Plugin.Instance?.Expansion.Durability == true) return;
             var weapon = Reflection.Get<ItemDrop.ItemData>(__instance, "m_weapon");
@@ -612,7 +612,7 @@ namespace ValheimAdminMenu
         private static void Postfix(Humanoid character, bool __result)
         {
             if (!__result || Plugin.Instance?.Phase.DrawBowImmediate != true || character != Player.m_localPlayer) return;
-            try { Reflection.Set(character, "m_attackDrawTime", 100f); } catch { }
+            try { Reflection.Set(character, "m_attackDrawTime", 100f); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GetAttackDrawPercentage))]
@@ -632,7 +632,7 @@ namespace ValheimAdminMenu
         private static void Prefix(Character __instance)
         {
             if (Plugin.Instance?.Phase.InfiniteJumps != true || __instance != Player.m_localPlayer) return;
-            try { Reflection.Set(__instance, "m_lastGroundTouch", 0f); } catch { }
+            try { Reflection.Set(__instance, "m_lastGroundTouch", 0f); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Player), nameof(Player.CanEat))]
@@ -718,7 +718,7 @@ namespace ValheimAdminMenu
             var phase = Plugin.Instance?.Phase;
             if (phase == null || __instance != Player.m_localPlayer) return;
             if (!phase.BuildEverywhere && !phase.IgnoreUnstable && !phase.IgnorePlayerBlock && !phase.IgnoreMysticalForce && !phase.AllowOverlap) return;
-            try { Reflection.Set(__instance, "m_placementStatus", 0); } catch { }
+            try { Reflection.Set(__instance, "m_placementStatus", 0); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Player), nameof(Player.HaveRequirements), new[] { typeof(Piece), typeof(Player.RequirementMode) })]
@@ -937,7 +937,7 @@ namespace ValheimAdminMenu
         {
             if (!ship) return null;
             try { return Reflection.Get<Rigidbody>(ship, "m_body"); }
-            catch { return null; }
+            catch (Exception caught) { AppLog.Swallow(caught); return null; }
         }
 
         private static void RestoreGravity()
@@ -996,7 +996,7 @@ namespace ValheimAdminMenu
                 up = ZInput.GetButton("Jump") || ZInput.GetButton("JoyJump");
                 down = ZInput.GetKey(KeyCode.LeftControl, true) || ZInput.GetButtonPressedTimer("JoyCrouch") > .33f;
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
 
             Vector3 current = body.linearVelocity;
             float y = current.y;
@@ -1139,7 +1139,7 @@ namespace ValheimAdminMenu
             var wagon = wear.GetComponentInParent<Vagon>();
             if (!wagon || !wagon.IsAttached()) return false;
             GameObject hitch = null;
-            try { hitch = Reflection.Get<GameObject>(wagon, "m_attachedObject"); } catch { }
+            try { hitch = Reflection.Get<GameObject>(wagon, "m_attachedObject"); } catch (Exception caught) { AppLog.Swallow(caught); }
             return hitch == player.gameObject;
         }
     }
@@ -1186,7 +1186,7 @@ namespace ValheimAdminMenu
                     }
                 }
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Fireplace), "UpdateFireplace")]
@@ -1203,7 +1203,7 @@ namespace ValheimAdminMenu
                 if (phase.InfStationFuel) view.GetZDO().Set(ZDOVars.s_fuel, __instance.m_maxFuel);
                 if (phase.FireplaceNoWet) Reflection.Set(__instance, "m_wet", false);
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Fireplace), "CheckWet")]
@@ -1212,7 +1212,7 @@ namespace ValheimAdminMenu
         private static void Postfix(Fireplace __instance)
         {
             if (Plugin.Instance?.Phase.FireplaceNoWet == true)
-                try { Reflection.Set(__instance, "m_wet", false); } catch { }
+                try { Reflection.Set(__instance, "m_wet", false); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Pickup))]
@@ -1294,12 +1294,12 @@ namespace ValheimAdminMenu
                 __state = Reflection.Get<float>(__instance, "m_attackRange");
                 Reflection.Set(__instance, "m_attackRange", __state.Value * Mathf.Clamp(mult, .5f, 5f));
             }
-            catch { __state = null; }
+            catch (Exception caught) { AppLog.Swallow(caught); __state = null; }
         }
         private static void Finalizer(Attack __instance, float? __state)
         {
             if (!__state.HasValue) return;
-            try { Reflection.Set(__instance, "m_attackRange", __state.Value); } catch { }
+            try { Reflection.Set(__instance, "m_attackRange", __state.Value); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
     [HarmonyPatch(typeof(Character), "ApplyLiquidResistance")]
@@ -1376,7 +1376,7 @@ namespace ValheimAdminMenu
             // Chain readiness uses m_timeSinceLastAttack; StartAttack zeros m_lastCombatTimer.
             if (phase.NoToolDelay || (phase.NoSpecialCooldown && secondaryAttack))
             {
-                try { Reflection.Set(__instance, "m_timeSinceLastAttack", 999f); } catch { }
+                try { Reflection.Set(__instance, "m_timeSinceLastAttack", 999f); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             if (phase.NoSpecialCooldown && secondaryAttack && __instance is Player player)
             {
@@ -1386,7 +1386,7 @@ namespace ValheimAdminMenu
                     Reflection.Set(player, "m_queuedSecondAttackTimer", 0f);
                     Reflection.Set(player, "m_blockReload", 0f);
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
         }
     }
@@ -1417,7 +1417,7 @@ namespace ValheimAdminMenu
                 __instance.m_attackAngle = Mathf.Clamp(__state.angle + Mathf.Clamp(phase.CleaveAngleBonus, 0, 90), 10f, 180f);
                 __state.active = true;
             }
-            catch { __state = default; }
+            catch (Exception caught) { AppLog.Swallow(caught); __state = default; }
         }
         private static void Finalizer(Attack __instance, State __state)
         {
@@ -1427,7 +1427,7 @@ namespace ValheimAdminMenu
                 __instance.m_multiHit = __state.multi;
                 __instance.m_attackAngle = __state.angle;
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -1447,40 +1447,41 @@ namespace ValheimAdminMenu
     [HarmonyPatch(typeof(Humanoid), "UpdateBlock")]
     internal static class AutoParryBlockPatch
     {
+        private static void Prefix(Humanoid __instance)
+        {
+            if (Plugin.Instance?.Phase.AutoParry != true || __instance != Player.m_localPlayer || !__instance.IsBlocking()) return;
+            try { Reflection.Set(__instance, "m_blockTimer", 0f); } catch (Exception caught) { AppLog.Swallow(caught); }
+        }
+    }
+
+    // m_perfectBlockInterval is a const (0.25s) inlined into BlockAttack, so it can't be widened (setting it threw every
+    // frame). Scale the block timer into the vanilla window for the duration of BlockAttack instead, then restore it.
+    [HarmonyPatch(typeof(Humanoid), "BlockAttack")]
+    internal static class AutoParryOnHitPatch
+    {
+        private const float PerfectBlock = .25f;
         private static void Prefix(Humanoid __instance, out float __state)
         {
             __state = -1f;
             var phase = Plugin.Instance?.Phase;
-            if (phase == null || __instance != Player.m_localPlayer) return;
-            float window = Mathf.Clamp(phase.PerfectBlockWindow, 1f, 8f);
+            if (phase == null || __instance != Player.m_localPlayer || !__instance.IsBlocking()) return;
             try
             {
-                float baseline = Reflection.Get<float>(__instance, "m_perfectBlockInterval");
-                if (baseline <= 0) return;
-                __state = baseline;
-                if (window > 1.001f)
-                    Reflection.Set(__instance, "m_perfectBlockInterval", baseline * window);
-                if (phase.AutoParry && __instance.IsBlocking())
-                    Reflection.Set(__instance, "m_blockTimer", 0f);
+                if (phase.AutoParry) { Reflection.Set(__instance, "m_blockTimer", 0f); return; }
+                float window = Mathf.Clamp(phase.PerfectBlockWindow, 1f, 8f);
+                if (window <= 1.001f) return;
+                float timer = Reflection.Get<float>(__instance, "m_blockTimer");
+                if (timer < 0f || timer < PerfectBlock || timer >= PerfectBlock * window) return;
+                __state = timer;
+                Reflection.Set(__instance, "m_blockTimer", timer / window);
+                AppLog.Debug("Combat", "Perfect block widened: " + timer.ToString("0.###") + "s inside x" + window.ToString("0.#") + " window");
             }
-            catch { __state = -1f; }
+            catch (Exception caught) { AppLog.Swallow(caught); __state = -1f; }
         }
         private static void Finalizer(Humanoid __instance, float __state)
         {
-            if (__state < 0 || __instance != Player.m_localPlayer) return;
-            try { Reflection.Set(__instance, "m_perfectBlockInterval", __state); } catch { }
-        }
-    }
-
-    [HarmonyPatch(typeof(Humanoid), "BlockAttack")]
-    internal static class AutoParryOnHitPatch
-    {
-        private static void Prefix(Humanoid __instance)
-        {
-            var phase = Plugin.Instance?.Phase;
-            if (phase?.AutoParry != true || __instance != Player.m_localPlayer) return;
-            if (!__instance.IsBlocking()) return;
-            try { Reflection.Set(__instance, "m_blockTimer", 0f); } catch { }
+            if (__state < 0f) return;
+            try { Reflection.Set(__instance, "m_blockTimer", __state); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -1490,7 +1491,7 @@ namespace ValheimAdminMenu
         {
             if (!ff) return null;
             try { return (Character)Reflection.Method(typeof(FishingFloat), "GetOwner").Invoke(ff, null); }
-            catch { return null; }
+            catch (Exception caught) { AppLog.Swallow(caught); return null; }
         }
         internal static bool LocalFloat(FishingFloat ff) =>
             ff && Player.m_localPlayer && GetOwner(ff) == Player.m_localPlayer;
@@ -1530,7 +1531,7 @@ namespace ValheimAdminMenu
             if (Plugin.Instance?.Phase?.AttractFish != true || !__instance) return;
             __state = __instance.m_baseHookChance;
             __instance.m_baseHookChance = 1f;
-            try { Reflection.Set(__instance, "m_failedBait", null); } catch { }
+            try { Reflection.Set(__instance, "m_failedBait", null); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
         private static void Finalizer(Fish __instance, float __state)
         {
@@ -1545,7 +1546,7 @@ namespace ValheimAdminMenu
         private static void Postfix(FishingFloat __instance, bool correctBait)
         {
             if (!correctBait || Plugin.Instance?.Phase?.InstantHook != true || !FishingHooks.LocalFloat(__instance)) return;
-            try { Reflection.Method(typeof(FishingFloat), "TryToHook").Invoke(__instance, null); } catch { }
+            try { Reflection.Method(typeof(FishingFloat), "TryToHook").Invoke(__instance, null); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -1556,7 +1557,7 @@ namespace ValheimAdminMenu
         private static void Prefix(FishingFloat __instance)
         {
             if (Plugin.Instance?.Phase?.InstantHook != true || !FishingHooks.LocalFloat(__instance)) return;
-            try { Reflection.Set(__instance, "m_nibbleTime", Time.time); } catch { }
+            try { Reflection.Set(__instance, "m_nibbleTime", Time.time); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
     }
 
@@ -1567,7 +1568,7 @@ namespace ValheimAdminMenu
         {
             if (Plugin.Instance?.Phase?.NoFishEscape != true || !__instance) return true;
             FishingFloat ff = null;
-            try { ff = Reflection.Get<FishingFloat>(__instance, "m_fishingFloat"); } catch { }
+            try { ff = Reflection.Get<FishingFloat>(__instance, "m_fishingFloat"); } catch (Exception caught) { AppLog.Swallow(caught); }
             return !FishingHooks.LocalFloat(ff);
         }
     }
@@ -1579,7 +1580,7 @@ namespace ValheimAdminMenu
         {
             if (Plugin.Instance?.Phase?.NoFishEscape != true || !__instance) return;
             FishingFloat ff = null;
-            try { ff = Reflection.Get<FishingFloat>(__instance, "m_fishingFloat"); } catch { }
+            try { ff = Reflection.Get<FishingFloat>(__instance, "m_fishingFloat"); } catch (Exception caught) { AppLog.Swallow(caught); }
             if (FishingHooks.LocalFloat(ff)) __result = 0f;
         }
     }
@@ -1597,7 +1598,7 @@ namespace ValheimAdminMenu
             if (phase.InstantReel)
             {
                 Fish hooked = null;
-                try { hooked = __instance.GetCatch(); } catch { }
+                try { hooked = __instance.GetCatch(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (hooked)
                 {
                     var owner = FishingHooks.GetOwner(__instance);
@@ -1608,7 +1609,7 @@ namespace ValheimAdminMenu
                         // Don't tear down ZNetView inside FixedUpdate Prefix.
                         Object.Destroy(__instance.gameObject);
                     }
-                    catch { }
+                    catch (Exception caught) { AppLog.Swallow(caught); }
                     return false;
                 }
             }

@@ -38,14 +38,20 @@ namespace ValheimAdminMenu
                 reapplyAt = Time.unscaledTime + .5f;
                 if (WantGod && !RawInGodMode(current))
                 {
-                    try { current.SetGodMode(true); } catch { }
+                    if (AppLog.Once("player.god.reassert")) AppLog.Warning("Player", "God mode was cleared by the game or another mod; re-asserting (further re-asserts at Debug).");
+                    else if (AppLog.Verbose && AppLog.Due("player.god.reassert.debug")) AppLog.Debug("Player", "God mode re-asserted");
+                    try { current.SetGodMode(true); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
                 if (WantFly && !RawIsDebugFlying(current))
                 {
-                    try { current.ToggleDebugFly(); } catch { }
+                    if (AppLog.Once("player.fly.reassert")) AppLog.Warning("Player", "Debug fly was cleared by the game or another mod; re-asserting (further re-asserts at Debug).");
+                    else if (AppLog.Verbose && AppLog.Due("player.fly.reassert.debug")) AppLog.Debug("Player", "Debug fly re-asserted");
+                    try { current.ToggleDebugFly(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
             }
-            if (WantFly && !RawIsDebugFlying(current)) DriveFallbackFly(current);
+            bool fallback = WantFly && !RawIsDebugFlying(current);
+            if (fallback != fallbackLogged) { fallbackLogged = fallback; AppLog.Debug("Player", fallback ? "Fallback fly engaged (vanilla debug fly unavailable)" : "Fallback fly released"); }
+            if (fallback) DriveFallbackFly(current);
             else ClearFallbackFly();
             if (!current.IsDead() && Time.unscaledTime >= refillAt)
             {
@@ -58,15 +64,18 @@ namespace ValheimAdminMenu
             if (DistanceEnabled) { touchedDistance = true; current.m_maxInteractDistance = Mathf.Clamp(Distance, 1, 50); }
             else if (touchedDistance) { current.m_maxInteractDistance = originalDistance; touchedDistance = false; }
         }
+        private bool fallbackLogged;
         internal void God(bool value)
         {
+            AppLog.Debug("Player", "God -> " + value);
             WantGod = value;
             touchedGod = true;
-            try { app.RequirePlayer().SetGodMode(value); } catch { }
+            try { app.RequirePlayer().SetGodMode(value); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
-        internal void Ghost(bool value) { app.RequirePlayer().SetGhostMode(value); touchedGhost = true; }
+        internal void Ghost(bool value) { AppLog.Debug("Player", "Ghost -> " + value); app.RequirePlayer().SetGhostMode(value); touchedGhost = true; }
         internal void Fly(bool value)
         {
+            AppLog.Debug("Player", "Fly -> " + value);
             WantFly = value;
             touchedFly = true;
             var p = app.RequirePlayer();
@@ -74,26 +83,28 @@ namespace ValheimAdminMenu
             {
                 if (RawIsDebugFlying(p) != value) p.ToggleDebugFly();
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             if (!value) ClearFallbackFly();
         }
-        internal void NoCost(bool value) { app.RequirePlayer().SetNoPlacementCost(value); touchedCost = true; }
+        internal void NoCost(bool value) { AppLog.Debug("Player", "No placement cost -> " + value); app.RequirePlayer().SetNoPlacementCost(value); touchedCost = true; }
         internal void Restore()
         {
             ClearFallbackFly();
             if (player)
             {
-                if (touchedGod) try { player.SetGodMode(originalGod); } catch { }
+                if (touchedGod) try { player.SetGodMode(originalGod); } catch (Exception caught) { AppLog.Swallow(caught); }
                 if (touchedGhost) player.SetGhostMode(originalGhost);
                 if (touchedCost) player.SetNoPlacementCost(originalCost);
                 if (touchedDistance) player.m_maxInteractDistance = originalDistance;
                 var view = player.GetComponent<ZNetView>();
                 if (touchedFly && view && view.IsValid() && view.IsOwner() && RawIsDebugFlying(player) != originalFly)
                 {
-                    try { player.ToggleDebugFly(); } catch { }
+                    try { player.ToggleDebugFly(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
             }
+            if (player || WantGod || WantFly) AppLog.Debug("Player", "Restore (god " + touchedGod + ", ghost " + touchedGhost + ", fly " + touchedFly + ", cost " + touchedCost + ")");
             player = null;
+            fallbackLogged = false;
             WantGod = WantFly = false;
             touchedGod = touchedGhost = touchedFly = touchedCost = touchedDistance = false;
             Stamina = Eitr = Weight = FastCraft = PortalItems = DistanceEnabled = false;
@@ -127,7 +138,7 @@ namespace ValheimAdminMenu
                     return true;
                 }
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return false;
         }
         private void DriveFallbackFly(Player p)
@@ -162,7 +173,7 @@ namespace ValheimAdminMenu
                 vel.z = 0f;
             }
             body.linearVelocity = vel;
-            try { Reflection.Set(p, "m_maxAirAltitude", p.transform.position.y); } catch { }
+            try { Reflection.Set(p, "m_maxAirAltitude", p.transform.position.y); } catch (Exception caught) { AppLog.Swallow(caught); }
         }
         private void ClearFallbackFly()
         {

@@ -4,11 +4,13 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>ValheavenModMenu</AssemblyName>
-    <Version>3.0.5</Version>
+    <Version>3.0.6</Version>
     <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</GamePath>
     <GameManaged>$(GamePath)\valheim_Data\Managed</GameManaged>
     <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- AppLog.Swallow uses [CallerFilePath]; keep the build machine's paths out of the shipped DLL. -->
+    <PathMap>$(MSBuildProjectDirectory)=Valheaven</PathMap>
     <PayloadDir>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\payload</PayloadDir>
   </PropertyGroup>
   <ItemGroup>
@@ -19,6 +21,7 @@
     <Reference Include="$(GameManaged)\UnityEngine*.dll" Private="false" />
     <Reference Include="$(GameManaged)\Splatform.dll" Private="false" />
     <Reference Include="$(GameManaged)\gui_framework.dll" Private="false" />
+    <Reference Include="$(GameManaged)\SoftReferenceableAssets.dll" Private="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.3.3" />

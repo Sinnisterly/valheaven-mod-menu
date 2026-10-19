@@ -274,7 +274,7 @@ namespace ValheimAdminMenu
                 if (InventoryGui.instance)
                     Reflection.Method(typeof(InventoryGui), "UpdateCraftingPanel", typeof(bool)).Invoke(InventoryGui.instance, new object[] { true });
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
 
             int added = (known.Count - recipesBefore) + (materials.Count - matsBefore) + (stations.Count - stationsBefore);
             app.Report("Discovered " + added + " entries (" + (known.Count - recipesBefore) + " recipes/pieces, "

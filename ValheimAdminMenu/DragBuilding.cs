@@ -53,26 +53,26 @@ namespace ValheimAdminMenu
             lastTickAt = Time.unscaledTime;
             if (!player || player != Player.m_localPlayer)
             {
-                Cancel();
+                Cancel("player gone");
                 return;
             }
             if (player.IsTeleporting() || player.IsDead())
             {
-                Cancel();
+                Cancel("teleport/death");
                 return;
             }
             if (!Enabled)
             {
-                Cancel();
+                Cancel("disabled");
                 return;
             }
             if (Plugin.Instance != null && Plugin.Instance.Open)
             {
-                Cancel();
+                Cancel("menu open");
                 return;
             }
-            if (Release250.PastePreviewActive) { Cancel(); return; }
-            if (!player.InPlaceMode() || !Release250.IsBuildHammer(player)) { Cancel(); return; }
+            if (Release250.PastePreviewActive) { Cancel("paste preview"); return; }
+            if (!player.InPlaceMode() || !Release250.IsBuildHammer(player)) { Cancel("left build mode"); return; }
 
             bool attackUp = Input.GetMouseButtonUp(0) || ZInput.GetButtonUp("Attack");
             bool attackHeld = Input.GetMouseButton(0) || ZInput.GetButton("Attack");
@@ -103,7 +103,7 @@ namespace ValheimAdminMenu
             }
             if (Input.GetMouseButtonDown(1) || ZInput.GetButtonDown("SecondaryAttack") || Input.GetKeyDown(KeyCode.Escape))
             {
-                Cancel();
+                Cancel("right-click/Esc");
                 return;
             }
             if (!attackHeld)
@@ -147,6 +147,7 @@ namespace ValheimAdminMenu
             if (!dragPrefab || !dragPiece) { Cancel(); return; }
             holding = true;
             Active = true;
+            AppLog.Debug("Drag", "Drag start: " + dragPrefab.name + " at " + startPos.ToString("F1"));
             RebuildLine(1, 1);
         }
 
@@ -267,6 +268,7 @@ namespace ValheimAdminMenu
                 if (stopped != null) break;
                 placed++;
             }
+            AppLog.Debug("Drag", "Commit " + (dragPrefab ? dragPrefab.name : "?") + ": placed " + (placed + 1) + "/" + Math.Max(1, total) + (stopped != null ? ", stopped: " + stopped : ""));
             Cancel();
             if (!Plugin.Instance) return;
             string msg = "Drag placed " + (placed + 1) + " pieces.";
@@ -289,13 +291,16 @@ namespace ValheimAdminMenu
             }
             catch (Exception ex)
             {
-                AppLog.Warning("Drag place failed: " + ex.Message);
+                AppLog.Error("Drag", "Drag place failed", ex);
                 return ex.Message;
             }
         }
 
-        internal static void Cancel()
+        internal static void Cancel() => Cancel(null);
+        /// <summary><paramref name="why"/> is logged at Debug only when a hold/arm was live, so per-frame callers stay quiet.</summary>
+        private static void Cancel(string why)
         {
+            if (why != null && (holding || armed)) AppLog.Debug("Drag", "Drag cancelled: " + why + (holding ? " (holding " + positions.Count + " pieces)" : " (armed)"));
             holding = false;
             Active = false;
             armed = false;
@@ -354,7 +359,7 @@ namespace ValheimAdminMenu
             if (!named) return false;
 
             snapScratch.Clear();
-            try { piece.GetSnapPoints(snapScratch); } catch { return false; }
+            try { piece.GetSnapPoints(snapScratch); } catch (Exception caught) { AppLog.Swallow(caught); return false; }
             return snapScratch.Count >= 2;
         }
 
@@ -373,7 +378,7 @@ namespace ValheimAdminMenu
             var piece = ghost ? ghost.GetComponent<Piece>() : null;
             if (!piece) return false;
             snapScratch.Clear();
-            try { piece.GetSnapPoints(snapScratch); } catch { return false; }
+            try { piece.GetSnapPoints(snapScratch); } catch (Exception caught) { AppLog.Swallow(caught); return false; }
             for (int i = 0; i < snapScratch.Count; i++)
             {
                 if (!snapScratch[i]) continue;
@@ -399,7 +404,7 @@ namespace ValheimAdminMenu
             var piece = ghost.GetComponent<Piece>();
             if (!piece) return false;
             snapScratch.Clear();
-            try { piece.GetSnapPoints(snapScratch); } catch { return false; }
+            try { piece.GetSnapPoints(snapScratch); } catch (Exception caught) { AppLog.Swallow(caught); return false; }
             if (snapScratch.Count < 2) return false;
 
             Vector3 right = ghost.transform.right;
@@ -444,6 +449,8 @@ namespace ValheimAdminMenu
         {
             if (!piece || !ZNetScene.instance) return null;
             var recipe = piece.GetComponent<CreativeRecipe>();
+            // A row of world locations would stack their interiors; one at a time.
+            if (recipe && !string.IsNullOrEmpty(recipe.LocationName)) return null;
             if (recipe && recipe.Prefab) return recipe.Prefab;
             string name = piece.gameObject.name.Replace("(Clone)", "").Trim();
             return ZNetScene.instance.GetPrefab(name) ?? piece.gameObject;

@@ -585,13 +585,13 @@ namespace ValheimAdminMenu
         private static Transform TryGetTransform(object obj, string field)
         {
             try { return Reflection.Get<Transform>(obj, field); }
-            catch { return null; }
+            catch (Exception caught) { AppLog.Swallow(caught); return null; }
         }
 
         private static GameObject TryGetGameObject(object obj, string field)
         {
             try { return Reflection.Get<GameObject>(obj, field); }
-            catch { return null; }
+            catch (Exception caught) { AppLog.Swallow(caught); return null; }
         }
 
         private static void DestroyAnchor(VfxAnchor a)
@@ -792,7 +792,7 @@ namespace ValheimAdminMenu
                 if (!view || !view.IsValid()) return;
                 if (!view.IsOwner())
                 {
-                    try { view.ClaimOwnership(); } catch { }
+                    try { view.ClaimOwnership(); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
                 if (!view.IsOwner()) return;
                 var zdo = view.GetZDO();
@@ -804,7 +804,7 @@ namespace ValheimAdminMenu
                     view.SetLocalScale(Vector3.one * ClampScale(VisualScale));
                     Reflection.Method(typeof(ZNetView), "SyncScale").Invoke(view, null);
                 }
-                catch { }
+                catch (Exception caught) { AppLog.Swallow(caught); }
             }
 
             private void OnDestroy()
@@ -1006,7 +1006,7 @@ namespace ValheimAdminMenu
                 {
                     if (!view) continue;
                     view.enabled = false;
-                    try { Reflection.Set(view, "m_ghost", true); } catch { }
+                    try { Reflection.Set(view, "m_ghost", true); } catch (Exception caught) { AppLog.Swallow(caught); }
                 }
             }
             if (!allowGameplay)

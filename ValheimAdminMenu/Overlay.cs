@@ -119,7 +119,7 @@ namespace ValheimAdminMenu
         {
             if (!chest || chest.GetComponent<TombStone>()) return null;
             string name = "";
-            try { name = chest.GetHoverName(); } catch { name = ""; }
+            try { name = chest.GetHoverName(); } catch (Exception caught) { AppLog.Swallow(caught); name = ""; }
             if (string.IsNullOrWhiteSpace(name)) name = PrefabId(chest.gameObject);
             if (!app.Settings.Data.espContainerCount || app.Settings.Data.espContainerItems) return name;
             int stacks = 0;
@@ -128,17 +128,17 @@ namespace ValheimAdminMenu
                 var inv = chest.GetInventory();
                 if (inv != null) stacks = inv.NrOfItems();
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return name + "  " + stacks;
         }
         private string ContainerItems(Container chest)
         {
             if (!chest || !app.Settings.Data.espContainerItems) return null;
             Inventory inv = null;
-            try { inv = chest.GetInventory(); } catch { return null; }
+            try { inv = chest.GetInventory(); } catch (Exception caught) { AppLog.Swallow(caught); return null; }
             if (inv == null) return null;
             System.Collections.Generic.List<ItemDrop.ItemData> items = null;
-            try { items = inv.GetAllItems(); } catch { return null; }
+            try { items = inv.GetAllItems(); } catch (Exception caught) { AppLog.Swallow(caught); return null; }
             if (items == null || items.Count == 0) return "(empty)";
             var lines = new System.Text.StringBuilder();
             int shown = 0;
@@ -168,7 +168,7 @@ namespace ValheimAdminMenu
                 int h = inv.GetHeight();
                 if (w > 0 && h > 0) slots = w * h;
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
             return Mathf.Clamp(slots, 1, 64);
         }
         private static bool MightBeOre(string name)

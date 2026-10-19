@@ -66,7 +66,7 @@ namespace ValheimAdminMenu
                 if (File.Exists(LibraryPath))
                     store = BlueprintJson.ParseLibrary(File.ReadAllText(LibraryPath));
             }
-            catch { store = new BlueprintLibrary(); }
+            catch (Exception caught) { AppLog.Swallow(caught); store = new BlueprintLibrary(); }
             if (store.blueprints == null) store.blueprints = new List<BlueprintRecord>();
             foreach (var bp in store.blueprints)
                 NormalizePieces(bp);
@@ -322,11 +322,11 @@ namespace ValheimAdminMenu
                                     dto.sy = float.Parse(parts[parts.Length - 2], System.Globalization.CultureInfo.InvariantCulture);
                                     dto.sz = float.Parse(parts[parts.Length - 1], System.Globalization.CultureInfo.InvariantCulture);
                                 }
-                                catch { } // default scale 1
+                                catch (Exception caught) { AppLog.Swallow(caught); } // default scale 1
                             }
                             pieces.Add(dto);
                         }
-                        catch { }
+                        catch (Exception caught) { AppLog.Swallow(caught); }
                     }
                 }
             }
@@ -356,7 +356,7 @@ namespace ValheimAdminMenu
                     .Where(f => !string.IsNullOrEmpty(f))
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
             }
-            catch { return Array.Empty<string>(); }
+            catch (Exception caught) { AppLog.Swallow(caught); return Array.Empty<string>(); }
         }
 
         /// <summary>Offline check that JSON round-trip keeps pieces[].</summary>

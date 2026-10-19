@@ -99,7 +99,7 @@ namespace ValheimAdminMenu
             var invalidFields=new HashSet<string>();
             void Field(string caption,string value,Action<string> changed,string placeholder="",int length=30) {
                 var label=Label(details,caption,15,Muted);Fixed(label.rectTransform,38);
-                var input=InputBox(details,value,_=>{},placeholder,length);input.onEndEdit.AddListener(v=>Run(()=>{try{changed(v);invalidFields.Remove(caption);}catch{invalidFields.Add(caption);throw;}}));Fixed((RectTransform)input.transform,32);
+                var input=InputBox(details,value,_=>{},placeholder,length);input.onEndEdit.AddListener(v=>Run(()=>{try{changed(v);invalidFields.Remove(caption);}catch (Exception caught) { AppLog.Swallow(caught); invalidFields.Add(caption);throw; }}));Fixed((RectTransform)input.transform,32);
             }
             Field("Quantity",quantity,v=>quantity=v,"1",4);
             if(!itemMode) {

@@ -93,7 +93,34 @@ namespace ValheimAdminMenu
         {
             for(int i=parent.childCount-1;i>=0;i--){var child=parent.GetChild(i).gameObject;child.SetActive(false);Object.Destroy(child);}
         }
-        private UnityEngine.UI.Button ActionButton(Transform parent,string text,Action action,string help=null,bool danger=false)
+        // Every widget action is logged here as "[UI] page | Kind "name" = value"; widget callback failures too.
+        private string PageName()
+        {
+            if(tab<0 || tab>=TabKeys.Length)return "?";
+            string page=TabKeys[tab].Substring(5);
+            var subs=SubTabKeys(tab);
+            if(subs!=null && subs.Length>1){string k=subs[Mathf.Clamp(subTabs[tab],0,subs.Length-1)];page+="/"+k.Substring(k.LastIndexOf('.')+1);}
+            return page;
+        }
+        private void UiLog(string kind,string name,string value=null)
+        {AppLog.Info("UI",PageName()+" | "+kind+" \""+name+"\""+(value==null?"":" = "+value));}
+        private void UiFail(string what,Exception e){AppLog.Error("UI",PageName()+" | "+what,e);app.Report(e.GetBaseException().Message);}
+        // Sliders fire per drag frame: log the settled value once (release or 0.4s idle).
+        private string sliderName,sliderPage;private float sliderValue,sliderAt;private bool sliderWhole;
+        private void SliderChanged(string name,float v,bool whole)
+        {
+            if(sliderName!=null && !ReferenceEquals(sliderName,name))FlushSlider();
+            if(sliderName==null)sliderPage=PageName();
+            sliderName=name;sliderValue=v;sliderWhole=whole;sliderAt=Time.unscaledTime;
+        }
+        private void FlushSlider()
+        {
+            if(sliderName==null)return;
+            AppLog.Info("UI",sliderPage+" | Slider \""+sliderName+"\" = "+sliderValue.ToString(sliderWhole?"0":"0.###",CultureInfo.InvariantCulture));
+            sliderName=null;
+        }
+        private void TickSliderLog(){if(sliderName!=null && !Input.GetMouseButton(0) && Time.unscaledTime-sliderAt>.4f)FlushSlider();}
+        private UnityEngine.UI.Button ActionButton(Transform parent,string text,Action action,string help=null,bool danger=false,string logAs=null)
         {
             var rect=Box(parent,text, danger?new Color(.24f,.11f,.095f):new Color(.17f,.16f,.13f),true);
             var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=rect.GetComponent<UnityEngine.UI.Image>();
@@ -104,7 +131,8 @@ namespace ValheimAdminMenu
             var label=Label(rect,text,16,danger?new Color(1,.7f,.59f):Ink);
             Stretch(label.rectTransform,pad,0,pad,0);label.alignment=TextAlignmentOptions.Center;
             ChromeCaption(label);
-            button.onClick.AddListener(()=>{ClearHover();try{action();}catch(Exception e){app.Report(e.GetBaseException().Message);}});
+            string logged=logAs??text;
+            button.onClick.AddListener(()=>{ClearHover();if(!string.IsNullOrEmpty(logged))UiLog("Button",logged);try{action();}catch(Exception e){UiFail("Button \""+logged+"\"",e);}});
             Help(rect,help);return button;
         }
         private RectTransform Row(Transform parent,float height)
@@ -254,7 +282,7 @@ namespace ValheimAdminMenu
             var fill=Box(outer,"Check",Gold);Stretch(fill,5,5,5,5);
             toggle.targetGraphic=outer.GetComponent<UnityEngine.UI.Image>();toggle.graphic=fill.GetComponent<UnityEngine.UI.Image>();
             toggle.navigation=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.None};toggle.SetIsOnWithoutNotify(read());
-            toggle.onValueChanged.AddListener(v=>{ClearHover();write(v);});
+            toggle.onValueChanged.AddListener(v=>{ClearHover();UiLog("Toggle",name,v?"ON":"OFF");try{write(v);}catch(Exception e){UiFail("Toggle \""+name+"\"",e);}});
             refreshers.Add(()=>{if(toggle)toggle.SetIsOnWithoutNotify(read());});Help(row,help);
         }
         private UnityEngine.UI.Slider SliderRow(Transform parent,string name,Func<float> read,Action<float> write,float min,float max,string help,bool whole=false)
@@ -272,7 +300,7 @@ namespace ValheimAdminMenu
             var handleArea=Node(sliderRoot,"Handle area");Stretch(handleArea,6,0,6,0);
             var handle=Box(handleArea,"Handle",Gold,true);handle.sizeDelta=new Vector2(12,-8);
             slider.fillRect=fill;slider.handleRect=handle;slider.targetGraphic=handle.GetComponent<UnityEngine.UI.Image>();slider.direction=UnityEngine.UI.Slider.Direction.LeftToRight;
-            slider.onValueChanged.AddListener(v=>{write(v);value.text=v.ToString(whole?"0":"0.##",CultureInfo.InvariantCulture);ClearHover();});
+            slider.onValueChanged.AddListener(v=>{SliderChanged(name,v,whole);try{write(v);}catch(Exception e){if(AppLog.Due("ui.slider."+name))UiFail("Slider \""+name+"\"",e);}value.text=v.ToString(whole?"0":"0.##",CultureInfo.InvariantCulture);ClearHover();});
             Action refresh=()=>{if(!slider)return;var v=read();slider.SetValueWithoutNotify(v);value.text=v.ToString(whole?"0":"0.##",CultureInfo.InvariantCulture);};refresh();refreshers.Add(refresh);Help(sliderRoot,help);return slider;
         }
         private TMP_InputField InputBox(Transform parent,string value,Action<string> changed,string placeholder="",int limit=80)
@@ -284,7 +312,7 @@ namespace ValheimAdminMenu
             var hint=Label(viewport,placeholder,17,Muted);Stretch(hint.rectTransform);
             input.textViewport=viewport;input.textComponent=text;input.placeholder=hint;input.characterLimit=limit;
             input.lineType=TMP_InputField.LineType.SingleLine;input.richText=false;input.customCaretColor=true;input.caretColor=Gold;input.selectionColor=new Color(.55f,.43f,.24f,.55f);
-            input.SetTextWithoutNotify(value);input.onValueChanged.AddListener(v=>changed(v));
+            input.SetTextWithoutNotify(value);input.onValueChanged.AddListener(v=>{try{changed(v);}catch(Exception e){if(AppLog.Due("ui.input"))UiFail("Input",e);}});
             input.navigation=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.None};return input;
         }
         private TMP_InputField Field(Transform parent,string name,string value,Action<string> changed,string help=null,int limit=80)
@@ -294,6 +322,7 @@ namespace ValheimAdminMenu
             FitWrappedRow(row,text,44,10f,0f);
             var input=InputBox(row,value,changed,"",limit);var rect=(RectTransform)input.transform;
             rect.anchorMin=new Vector2(.48f,0);rect.anchorMax=Vector2.one;rect.offsetMin=new Vector2(0,5);rect.offsetMax=new Vector2(0,-5);
+            input.onEndEdit.AddListener(v=>UiLog("Field",name,v==null||v.Length<=80?v:v.Substring(0,80)+"..."));
             Help(rect,help);return input;
         }
         private void ActionRow(Transform parent,string name,string caption,Action action,string help=null,bool danger=false)
@@ -301,7 +330,7 @@ namespace ValheimAdminMenu
             parent = ResolveParent(parent);
             var row=Row(parent,46);var text=Label(row,name,17);LabelColumn(text,.55f);
             FitWrappedRow(row,text,46,12f,160f);
-            var button=ActionButton(row,caption,()=>Run(action),help,danger);var rect=(RectTransform)button.transform;
+            var button=ActionButton(row,caption,()=>Run(action,name),help,danger,name+" > "+caption);var rect=(RectTransform)button.transform;
             rect.anchorMin=rect.anchorMax=new Vector2(1,.5f);rect.pivot=new Vector2(1,.5f);rect.sizeDelta=new Vector2(150,33);
             Help(text.rectTransform,help);
         }
@@ -310,7 +339,7 @@ namespace ValheimAdminMenu
             parent = ResolveParent(parent);
             var row=Row(parent,46);var label=Label(row,name,17);LabelColumn(label,.55f);
             FitWrappedRow(row,label,46,12f,160f);
-            var button=ActionButton(row,caption,()=>Confirm(name,warning,action),warning,true);var rect=(RectTransform)button.transform;
+            var button=ActionButton(row,caption,()=>Confirm(name,warning,action),warning,true,name+" > "+caption);var rect=(RectTransform)button.transform;
             rect.anchorMin=rect.anchorMax=new Vector2(1,.5f);rect.pivot=new Vector2(1,.5f);rect.sizeDelta=new Vector2(150,33);
         }
         private UnityEngine.UI.Button SelectRow(Transform parent,string label,Func<string> selected,Func<System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string,Action>>> options)
@@ -318,7 +347,7 @@ namespace ValheimAdminMenu
             parent = ResolveParent(parent);
             var row=Row(parent,44);var name=Label(row,label,17);LabelColumn(name,.46f);
             FitWrappedRow(row,name,44,10f,0f);
-            UnityEngine.UI.Button button=null;button=ActionButton(row,"",()=>SelectFrom((RectTransform)button.transform,options()));
+            UnityEngine.UI.Button button=null;button=ActionButton(row,"",()=>SelectFrom((RectTransform)button.transform,options(),label));
             var rect=(RectTransform)button.transform;rect.anchorMin=new Vector2(.48f,0);rect.anchorMax=Vector2.one;rect.offsetMin=new Vector2(0,5);rect.offsetMax=new Vector2(0,-5);
             var title=button.GetComponentInChildren<TextMeshProUGUI>();title.alignment=TextAlignmentOptions.Left;
             title.textWrappingMode=TextWrappingModes.Normal;title.overflowMode=TextOverflowModes.Ellipsis;

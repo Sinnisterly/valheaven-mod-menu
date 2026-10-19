@@ -15,7 +15,7 @@ namespace ValheimAdminMenu
     public sealed class Plugin : MonoBehaviour
     {
         public const string Id = "local.valheim.adminmenu";
-        public const string ProductVersion = "3.0.5";
+        public const string ProductVersion = "3.0.6";
         /// <summary>Steam 1.0.7+ (checked through 1.0.20). Reflection.Check is the real gate.</summary>
         private const int MinSupportedPatch = 7;
         internal static Plugin Instance;
@@ -54,6 +54,7 @@ namespace ValheimAdminMenu
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            AppLog.HookUnity();
             Features = new PlayerFeatures(this);
             Expansion = new ExpansionFeatures(this);
             Phase = new PhaseFeatures(this);
@@ -62,8 +63,10 @@ namespace ValheimAdminMenu
             Overlay = new Overlay(this);
             Menu = new MenuView(this);
             Settings = new SavedSettings(this);
-            try { Settings.Load(); } catch (Exception ex) { AppLog.Warning("Settings load failed: " + ex.Message); Settings.Apply(); }
             var game = global::Version.CurrentVersion;
+            LogSessionHeader(game.ToString());
+            try { Settings.Load(); } catch (Exception ex) { AppLog.Error("Settings", "Load failed; using defaults", ex); Settings.Apply(); }
+            AppLog.Info("Session", "Debug logging " + (AppLog.Verbose ? "ON" : "off") + ". Saved settings (non-default): " + Settings.DescribeNonDefault());
             compatible = game.m_major == 1 && game.m_minor == 0 && game.m_patch >= MinSupportedPatch;
             if (!compatible)
             {
@@ -76,6 +79,7 @@ namespace ValheimAdminMenu
                 Reflection.Check();
                 harmony = new Harmony(Id);
                 harmony.PatchAll(typeof(Plugin).Assembly);
+                LogHarmony();
                 SceneManager.activeSceneChanged += SceneChanged;
 #if VALHEAVEN_UI_CHECK
                 StartCoroutine(Menu.RuntimeCheck());
@@ -92,7 +96,7 @@ namespace ValheimAdminMenu
                 compatible = false;
                 PlantEverything.Clear(); CreativeHammer.Clear(); ViewControls.Clear(); WaterControls.Clear(); MapControls.Clear();
                 harmony?.UnpatchAll(Id);
-                AppLog.Error(ex);
+                AppLog.Error("Startup", "Compatibility check / patching failed; all features disabled. " + ex);
                 Status = "Compatibility check failed. See Valheaven.log.";
             }
         }
@@ -110,6 +114,7 @@ namespace ValheimAdminMenu
                 var player = Player.m_localPlayer;
                 if (player != lastPlayer)
                 {
+                    AppLog.Info("Session", player ? "Local player spawned at " + player.transform.position.ToString("F0") + (ZNet.instance ? (ZNet.instance.IsServer() ? " (host/local world)" : " (client)") : "") + "; features reset" : "Local player gone; features reset");
                     SetOpen(false);
                     Settings.CaptureCharacterState = false;
                     Features.Restore();
@@ -136,15 +141,18 @@ namespace ValheimAdminMenu
                 Menu.Tick();
                 for (int i = 0; i < 4 && Commands.Count > 0; i++)
                 {
-                    try { Commands.Dequeue()(); }
-                    catch (Exception ex) { Report(ex.GetBaseException().Message); AppLog.Error(ex); }
+                    var command = Commands.Dequeue();
+                    runningCommand = null;
+                    try { command(); }
+                    catch (Exception ex) { AppLog.Error("Command", (runningCommand ?? CommandName(command)) + " failed. " + ex); Report(ex.GetBaseException().Message); }
                 }
             }
             catch (Exception ex)
             {
+                // Every frame would repeat this; full trace first, then backed-off summaries.
+                if (AppLog.Due("plugin.update")) AppLog.Error("Update", "Frame update failed; menu closed. " + ex);
                 Report("Update failed; menu closed. " + ex.GetBaseException().Message);
                 SetOpen(false);
-                AppLog.Error(ex);
             }
         }
 
@@ -177,11 +185,14 @@ namespace ValheimAdminMenu
             if (Settings != null && Settings.Data.autoSave)
             {
                 try { Settings.Save(false); }
-                catch (Exception ex) { AppLog.Warning("Settings save failed: " + ex.Message); }
+                catch (Exception ex) { AppLog.Error("Settings", "Save on quit failed", ex); }
             }
+            AppLog.Info("Session", "Game quitting.");
+            AppLog.Flush();
         }
         private void SceneChanged(Scene a, Scene b)
         {
+            AppLog.Info("Session", "Scene " + a.name + " -> " + b.name + "; features cleared");
             SetOpen(false);
             if (Settings != null) { Settings.CaptureCharacterState = false; Settings.PendingPlayer = true; }
             Commands.Clear(); Features.Restore(); Expansion.Reset(); Phase.Reset(); Overlay.Clear(); Menu.ResetScene(); PlantEverything.Clear(); CreativeHammer.Clear(); ViewControls.Clear(); WaterControls.Clear(); MapControls.Clear();
@@ -189,6 +200,7 @@ namespace ValheimAdminMenu
         internal void SetOpen(bool open)
         {
             if (Open == open) return;
+            AppLog.Info("UI", open ? "Menu open" : "Menu close");
             if (open)
             {
                 priorLock = ZCursor.LockState;
@@ -205,14 +217,14 @@ namespace ValheimAdminMenu
                 catch (Exception ex)
                 {
                     Open = false;
-                    try { Menu?.Hide(); } catch { /* ignore */ }
-                    AppLog.Error(ex);
+                    try { Menu?.Hide(); } catch (Exception hideEx) { AppLog.Swallow(hideEx); }
+                    AppLog.Error("UI", "Menu open failed. " + ex + "\n    " + (Menu?.DescribeVisibility() ?? ""));
                     Report(L.T("ui.ui_closed_after_a_rendering"));
                 }
             }
             else
             {
-                if (Settings != null && Settings.Data.autoSave) { try { Settings.Save(false); } catch (Exception ex) { AppLog.Warning("Settings save failed: " + ex.Message); } }
+                if (Settings != null && Settings.Data.autoSave) { try { Settings.Save(false); } catch (Exception ex) { AppLog.Error("Settings", "Save on close failed", ex); } }
                 Menu?.StopBinding();
                 Open = false;
                 Menu?.Hide();
@@ -241,7 +253,7 @@ namespace ValheimAdminMenu
                 if (MessageHud.instance)
                     MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Valheaven: if the menu is invisible, set Valheim to Fullscreen Window.");
             }
-            catch { }
+            catch (Exception caught) { AppLog.Swallow(caught); }
         }
         private void BlockNativeUI()
         {
@@ -250,12 +262,88 @@ namespace ValheimAdminMenu
                 if (module.enabled && module != Menu.InputModule) { if(!blockedModules.Contains(module))blockedModules.Add(module); module.enabled = false; }
         }
         internal static void ReleaseCursor() { ZCursor.LockState = CursorLockMode.None; ZCursor.Show(); Cursor.visible = true; }
-        internal void Enqueue(Action action)
+        private string runningCommand;
+        private int lastReportAt;
+        /// <summary>Label names the command in failure logs ("page | row"); hotkeys and menu rows pass one.</summary>
+        internal void Enqueue(Action action, string label = null)
         {
-            if (Commands.Count < 32) Commands.Enqueue(action);
-            else Report(L.T("ui.command_queue_is_full_wait"));
+            if (Commands.Count < 32) Commands.Enqueue(label == null ? action : () => { runningCommand = label; action(); });
+            else { AppLog.Warning("Command", "Queue full (32); dropped " + (label ?? CommandName(action))); Report(L.T("ui.command_queue_is_full_wait")); }
         }
-        internal void Report(string message) { Status = message; AppLog.Info(message); }
+        // Compiler lambda names still point at the page method (e.g. MenuView.<CharacterPage>b__12_3).
+        private static string CommandName(Action action) => action?.Method == null ? "command" : action.Method.DeclaringType?.Name + "." + action.Method.Name;
+        /// <summary>Status bar + "[Status]" log line. Identical repeats within 10s are not re-logged (per-frame reporters).</summary>
+        internal void Report(string message)
+        {
+            int now = Environment.TickCount;
+            bool repeat = string.Equals(Status, message, StringComparison.Ordinal) && unchecked(now - lastReportAt) < 10000;
+            Status = message;
+            if (repeat) return;
+            lastReportAt = now;
+            AppLog.Info("Status", message);
+        }
+        private void LogSessionHeader(string game)
+        {
+            string mode;
+            try { mode = Screen.fullScreenMode + " " + Screen.width + "x" + Screen.height + " @" + Screen.currentResolution.refreshRateRatio.value.ToString("0"); } catch (Exception ex) { mode = "?"; AppLog.Swallow(ex); }
+            AppLog.Info("Session", "Valheaven " + ProductVersion + " | Valheim " + game + " | Unity " + Application.unityVersion
+                + " | GFX " + SystemInfo.graphicsDeviceType + " " + SystemInfo.graphicsDeviceName + " (" + SystemInfo.graphicsDeviceVersion + ", " + SystemInfo.graphicsMemorySize + " MB)"
+                + " | " + mode + " | OS " + SystemInfo.operatingSystem + " | RAM " + SystemInfo.systemMemorySize + " MB"
+                + " | Log " + AppPaths.LogPath);
+            try
+            {
+                // Other managed mods: file-backed assemblies outside valheim_Data/Managed and the Mono runtime (names only).
+                string managed = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "Managed"));
+                var mods = new List<string>();
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    string location;
+                    try { location = asm.IsDynamic ? "" : asm.Location; } catch (Exception caught) { AppLog.Swallow(caught); location = ""; }
+                    if (string.IsNullOrEmpty(location) || location.StartsWith(managed, StringComparison.OrdinalIgnoreCase)
+                        || location.IndexOf("MonoBleedingEdge", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    mods.Add(asm.GetName().Name + " " + asm.GetName().Version);
+                }
+                mods.Sort(StringComparer.OrdinalIgnoreCase);
+                AppLog.Info("Session", "Other mod assemblies (" + mods.Count + "): " + (mods.Count == 0 ? "none" : string.Join(", ", mods)));
+            }
+            catch (Exception ex) { AppLog.Swallow(ex); }
+        }
+        private void LogHarmony()
+        {
+            try
+            {
+                var methods = harmony.GetPatchedMethods().ToList();
+                var shared = new List<string>();
+                foreach (var method in methods)
+                {
+                    var info = Harmony.GetPatchInfo(method);
+                    var others = info?.Owners?.Where(o => o != Id).ToArray();
+                    string name = method.DeclaringType?.Name + "." + method.Name;
+                    if (others != null && others.Length > 0) shared.Add(name + " [" + string.Join(", ", others) + "]");
+                    AppLog.Debug("Harmony", "Patched " + name + (info == null ? "" : " (pre " + info.Prefixes.Count + ", post " + info.Postfixes.Count + ", trans " + info.Transpilers.Count + ", fin " + info.Finalizers.Count + ")"));
+                }
+                AppLog.Info("Harmony", "Patched " + methods.Count + " game methods. Shared with other Harmony owners: " + (shared.Count == 0 ? "none" : shared.Count + " -> " + string.Join("; ", shared)));
+            }
+            catch (Exception ex) { AppLog.Swallow(ex); }
+        }
+        /// <summary>Settings > Diagnostics. One-shot state dump for bug reports.</summary>
+        internal void LogDiagnostics()
+        {
+            var p = Player.m_localPlayer;
+            AppLog.Info("Diag", "Valheaven " + ProductVersion + ", Valheim " + global::Version.CurrentVersion + ", GFX " + SystemInfo.graphicsDeviceType + ", " + Screen.fullScreenMode
+                + ", scene " + SceneManager.GetActiveScene().name + ", menu " + (Open ? "open" : "closed") + ", queue " + Commands.Count
+                + (p ? ", player at " + p.transform.position.ToString("F0") + (p.InGodMode() ? " god" : "") + (p.InGhostMode() ? " ghost" : "") + (p.IsDebugFlying() ? " fly" : "") + (p.PlacementCostDisabled ? " nocost" : "") : ", no player")
+                + (ZNet.instance ? (ZNet.instance.IsServer() ? ", host" : ", client") : ""));
+            try
+            {
+                var list = Reflection.GetStatic<List<Character>>(typeof(Character), "s_characters");
+                AppLog.Info("Diag", "Characters " + (list?.Count ?? -1) + " (destroyed " + (list?.Count(c => !c) ?? 0) + ")");
+            }
+            catch (Exception ex) { AppLog.Swallow(ex); }
+            AppLog.Info("Diag", "Hotkeys: " + string.Join(", ", HotkeyRegistry.All.Where(f => f.Key != KeyCode.None).Select(f => f.Id + "=" + f.Key)) + "; menu " + Hotkey);
+            AppLog.Info("Diag", "Active (non-default): " + Settings.DescribeNonDefault());
+            Report("Diagnostics written to Valheaven.log.");
+        }
         internal Player RequirePlayer()
         {
             var player = Player.m_localPlayer;
@@ -274,7 +362,7 @@ namespace ValheimAdminMenu
             SceneManager.activeSceneChanged -= SceneChanged;
             PlantEverything.Clear(); CreativeHammer.Clear(); ViewControls.Clear(); WaterControls.Clear(); MapControls.Clear();
             harmony?.UnpatchAll(Id);
-            if (Instance == this) Instance = null;
+            if (Instance == this) { Instance = null; AppLog.UnhookUnity(); }
         }
 
         internal void ClearCharacterCheatFlag()
@@ -303,7 +391,7 @@ namespace ValheimAdminMenu
             if (player) ClearInv(player.GetInventory());
             foreach (var container in WorldTools.Loaded<Container>())
             {
-                try { ClearInv(container.GetInventory()); } catch { }
+                try { ClearInv(container.GetInventory()); } catch (Exception caught) { AppLog.Swallow(caught); }
             }
             if (notify)
                 Report("Cheat flags cleared (" + cleared + " inventory item" + (cleared == 1 ? "" : "s") + "). World modifiers are unchanged.");

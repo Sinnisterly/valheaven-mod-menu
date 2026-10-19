@@ -113,7 +113,7 @@ namespace ValheimAdminMenu
                 if (eqs && eqsExtraRows != null)
                 {
                     try { extra = Mathf.Max(0, (int)eqsExtraRows.GetValue(null, null)); }
-                    catch { extra = 0; }
+                    catch (Exception caught) { AppLog.Swallow(caught); extra = 0; }
                 }
 
                 // EQS visible = BaseRows + ExtraRows. invrows stores vanilla base (max 9) so server load agrees with EQS.
@@ -129,13 +129,13 @@ namespace ValheimAdminMenu
                     if (cols != prevW && eqsUpdateSlots != null)
                     {
                         try { eqsUpdateSlots.Invoke(null, new object[] { true }); }
-                        catch { /* slot cells keep the previous width until the next row change */ }
+                        catch (Exception caught) { AppLog.Swallow(caught); /* slot cells keep the previous width until the next row change */ }
                     }
 
                     if (eqsVisibleRows != null)
                     {
                         try { visible = (int)eqsVisibleRows.GetValue(null, null); }
-                        catch { visible = baseRows + extra; }
+                        catch (Exception caught) { AppLog.Swallow(caught); visible = baseRows + extra; }
                     }
                     else visible = baseRows + extra;
                 }
@@ -176,7 +176,7 @@ namespace ValheimAdminMenu
                 if (player.TryGetUniqueKeyValue("invrows", out var current) && current == next) return;
                 player.AddUniqueKeyValue("invrows", next);
             }
-            catch { /* unique-key sync can fail before the player view exists */ }
+            catch (Exception caught) { AppLog.Swallow(caught); /* unique-key sync can fail before the player view exists */ }
         }
 
         internal static void EnsureChest(Container container)

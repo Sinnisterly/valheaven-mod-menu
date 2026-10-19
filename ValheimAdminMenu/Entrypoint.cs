@@ -41,7 +41,7 @@ namespace Valheaven
             {
                 if (frame == null) continue;
                 try { bootstrap.Patch(frame, postfix: ready); gates++; }
-                catch (Exception ex) { try { AppLog.Warning("Bootstrap gate " + frame.DeclaringType?.Name + " failed: " + ex.Message); } catch { } }
+                catch (Exception ex) { try { AppLog.Warning("Bootstrap gate " + frame.DeclaringType?.Name + " failed: " + ex.Message); } catch (Exception caught) { AppLog.Swallow(caught); } }
             }
 
             if (gates == 0)
@@ -71,12 +71,12 @@ namespace Valheaven
                 if (failures <= 5 || failures % 60 == 0)
                 {
                     try { AppLog.Error("Bootstrap failed (attempt " + failures + "): " + ex); }
-                    catch { /* AppLog itself may not be writable yet */ }
+                    catch (Exception caught) { AppLog.Swallow(caught); /* AppLog itself may not be writable yet */ }
                 }
                 return;
             }
 
-            try { bootstrap?.UnpatchAll(bootstrap.Id); } catch { /* ignore */ }
+            try { bootstrap?.UnpatchAll(bootstrap.Id); } catch (Exception caught) { AppLog.Swallow(caught); /* ignore */ }
             bootstrap = null;
         }
     }
